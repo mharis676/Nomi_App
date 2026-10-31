@@ -21,3 +21,8 @@ backups/
 playwright-server-report/
 
 playwright-local-report/
+
+*.apk
+*.aab
+*.keystore
+*.jks

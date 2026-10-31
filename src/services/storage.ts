@@ -1,3 +1,4 @@
+import { Capacitor } from '@capacitor/core';
 import { commitLocal, readLocalState } from './localWorkspace';
 import { StorageService } from './ledger';
 import { isDemo, isLocal, supabase } from './backend';
@@ -31,12 +32,15 @@ export const storage = new Proxy(local, {
     if (mutations.includes(property as Mutation)) return async (...args: unknown[]) => {
       if (isDemo) return (target[property as Mutation] as (...args: unknown[]) => unknown).apply(target, args);
       if (isLocal) {
-        if (!navigator.locks) throw new Error('Use a current browser over HTTPS or localhost to save records safely.');
-        return navigator.locks.request('carry-local-workspace', () => {
+        const commit = () => {
           const saved = commitLocal(window.localStorage, ledger => (ledger[property as Mutation] as (...args: unknown[]) => unknown).apply(ledger, args));
           target.replaceState(saved.state);
           return saved.result;
-        });
+        };
+        if (navigator.locks) return navigator.locks.request('carry-local-workspace', commit);
+        // Native Android runs one WebView; synchronous snapshot commits cannot overlap there.
+        if (Capacitor.isNativePlatform()) return commit();
+        throw new Error('Use a current browser over HTTPS or localhost to save records safely.');
       }
       const current = epoch;
       const signature = JSON.stringify([property, args]);

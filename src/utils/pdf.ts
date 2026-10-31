@@ -1,3 +1,5 @@
+import { Capacitor } from '@capacitor/core';
+import { exportFile } from './exportFile';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { Invoice, Customer, CustomerTransaction, BusinessSettings } from '../types';
@@ -6,7 +8,7 @@ import { formatCurrency } from './finance';
 /**
  * Generates and downloads a CARRY CHARGES INVOICE PDF.
  */
-export function generateInvoicePDF(invoice: Invoice, settings: BusinessSettings): void {
+export async function generateInvoicePDF(invoice: Invoice, settings: BusinessSettings): Promise<void> {
   const doc = new jsPDF({
     unit: 'mm',
     format: 'a4',
@@ -175,13 +177,14 @@ export function generateInvoicePDF(invoice: Invoice, settings: BusinessSettings)
   doc.text(settings.invoiceFooterNote, 14, 275);
   doc.text(`Page 1 of 1 — Generated securely on ${new Date().toLocaleString()}`, 14, 280);
 
-  doc.save(`${invoice.invoiceNumber}.pdf`);
+  if (Capacitor.isNativePlatform()) await exportFile(doc.output('blob'), `${invoice.invoiceNumber}.pdf`);
+  else doc.save(`${invoice.invoiceNumber}.pdf`);
 }
 
 /**
  * Generates and downloads a CUSTOMER ACCOUNT STATEMENT PDF.
  */
-export function generateStatementPDF(
+export async function generateStatementPDF(
   customer: Customer,
   statement: {
     openingBalance: number;
@@ -193,7 +196,7 @@ export function generateStatementPDF(
   settings: BusinessSettings,
   startDate?: string,
   endDate?: string
-): void {
+): Promise<void> {
   const doc = new jsPDF({
     unit: 'mm',
     format: 'a4',
@@ -312,6 +315,8 @@ export function generateStatementPDF(
   doc.setTextColor(120);
   doc.text('Saudi Carry Charges System — Official Statement of Account', 14, 280);
 
-  doc.save(`Statement_${customer.customerCode}_${new Date().toISOString().split('T')[0]}.pdf`);
+  const filename = `Statement_${customer.customerCode}_${new Date().toISOString().split('T')[0]}.pdf`;
+  if (Capacitor.isNativePlatform()) await exportFile(doc.output('blob'), filename);
+  else doc.save(filename);
 }
 

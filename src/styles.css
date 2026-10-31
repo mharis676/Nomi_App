@@ -164,3 +164,6 @@ body { color: var(--app-ink); background: #f4f7fa; }
 .text-white-50 { color: #fff !important; }
 .bg-info-subtle.text-info { color: #07586a !important; }
 .bg-secondary-subtle .btn-outline-danger, .alert-secondary .btn-outline-danger { color: #a51d2a; }
+
+/* Keep the native app clear of display cutouts and gesture controls. */
+body { padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); }

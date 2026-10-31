@@ -136,7 +136,7 @@ export const InvoiceDetail: React.FC = () => {
         <div className="d-flex gap-2">
           <button
             className="btn btn-outline-danger btn-sm d-flex align-items-center gap-1"
-            onClick={() => generateInvoicePDF(invoice, settings)}
+            onClick={() => void generateInvoicePDF(invoice, settings).catch(cause => setError(cause instanceof Error ? cause.message : 'Could not export invoice.'))}
           >
             <i className="bi bi-file-earmark-pdf"></i> Download PDF
           </button>

@@ -6,8 +6,8 @@ Install Chromium with `npx playwright install chromium`. Run `npm run test:e2e:l
 
 For optional server-mode checks, use an isolated PostgreSQL database. Run `psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f test/integration/bootstrap.sql` only against that test database, then `npm run db:migrate` and apply `server/runtime-role.sql`. Set `TEST_DATABASE_URL` and run `npm run test:integration` and `npm run test:e2e:server`. These tests replace test data and must never target production. The server browser tests use a local test identity service with the real API/database and restricted runtime role.
 
-GitHub Actions runs on pushes to every branch, pull requests and manual dispatch. Commit `.github/workflows/ci.yml` together with all related source, test and package changes before pushing. An untracked local workflow cannot run on GitHub. Once it is on the default branch, choose Actions > Quality checks > Run workflow for manual execution.
+GitHub Actions runs only the APK build, with one job, for main/master pushes or manual dispatch. Commit the workflow, Android project, Capacitor configuration, source and package changes together. Choose Actions > Build Android APK > Run workflow for manual execution. Download the Nomi-Carry-APK artifact after success. See APK.md.
 
-Require both quality and database jobs in branch protection. Dependabot proposes updates. No automatic deployment is configured. Real Supabase and staging requirements apply only to explicitly enabled server mode.
+Quality and database checks remain available as local npm commands; they no longer create separate automatic jobs. Remove obsolete quality/database required checks from branch protection if they were previously configured. Real Supabase requirements apply only to explicitly enabled server mode.
 
 PRs should describe user-visible behavior, provide relevant desktop/mobile evidence and identify migration/recovery impacts. Do not modify applied migrations; add new migrations so checksum verification remains meaningful. Keep credentials and customer backups out of Git and artifacts.

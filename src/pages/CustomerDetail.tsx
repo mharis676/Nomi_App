@@ -119,7 +119,7 @@ export const CustomerDetail: React.FC = () => {
 
           <button
             className="btn btn-outline-danger btn-sm d-flex align-items-center gap-1"
-            onClick={() => generateStatementPDF(customer, statement, settings, startDate, endDate)}
+            onClick={() => void generateStatementPDF(customer, statement, settings, startDate, endDate).catch(cause => window.alert(cause instanceof Error ? cause.message : 'Could not export statement.'))}
           >
             <i className="bi bi-file-earmark-pdf"></i> Download Statement PDF
           </button>

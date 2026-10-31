@@ -1,3 +1,4 @@
+import { exportFile } from '../utils/exportFile';
 import React, { useState, useEffect } from 'react';
 import { isDemo } from '../services/backend';
 import { storage } from '../services/storage';
@@ -67,7 +68,7 @@ export const Settings: React.FC = () => {
     return `"${str}"`;
   };
 
-  const handleExportAuditCSV = () => {
+  const handleExportAuditCSV = async () => {
     const headers = ['ID', 'Timestamp', 'Action', 'Table', 'Record ID', 'Details'];
     const rows = auditLogs.map((log) => [
       sanitizeCSV(log.id),
@@ -80,17 +81,11 @@ export const Settings: React.FC = () => {
 
     const csvContent = [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.setAttribute('download', `Audit_Logs_${new Date().toISOString().split('T')[0]}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
+    try { await exportFile(blob, `Audit_Logs_${new Date().toISOString().split('T')[0]}.csv`); }
+    catch (cause) { setSaveError(cause instanceof Error ? cause.message : 'Could not export file.'); }
   };
 
-  const handleExportCustomersCSV = () => {
+  const handleExportCustomersCSV = async () => {
     const customers = storage.getCustomers();
     const headers = ['Customer Code', 'Full Name', 'Phone', 'Address', 'Opening Balance', 'Closing Balance', 'Active'];
     const rows = customers.map((c) => {
@@ -108,14 +103,8 @@ export const Settings: React.FC = () => {
 
     const csvContent = [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.setAttribute('download', `Customers_${new Date().toISOString().split('T')[0]}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
+    try { await exportFile(blob, `Customers_${new Date().toISOString().split('T')[0]}.csv`); }
+    catch (cause) { setSaveError(cause instanceof Error ? cause.message : 'Could not export file.'); }
   };
 
   return (

@@ -29,6 +29,9 @@ test('local workspace opens without login and preserves orders/payments after re
  await page.getByRole('button', { name: /Local QA Cargo/ }).click();
  await page.getByRole('button', { name: /Confirm Order/ }).click();
  await expect(page).toHaveURL(/invoices\/inv-/);
+ const download = page.waitForEvent('download');
+ await page.getByRole('button', { name: 'Download PDF' }).click();
+ expect((await download).suggestedFilename()).toMatch(/\.pdf$/);
  await page.reload();
  await expect(page.locator('main')).toContainText('Local QA Cargo');
  if (isMobile && await page.getByRole('button', { name: 'Toggle navigation' }).getAttribute('aria-expanded') === 'false') await page.getByRole('button', { name: 'Toggle navigation' }).click();

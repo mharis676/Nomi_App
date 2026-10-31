@@ -1,73 +1,44 @@
-name: Quality checks
+name: Build Android APK
 "on":
   push:
-  pull_request:
+    branches: [main, master]
   workflow_dispatch:
 permissions:
   contents: read
 concurrency:
-  group: checks-${{ github.ref }}
+  group: android-apk-${{ github.ref }}
   cancel-in-progress: true
 jobs:
-  quality:
+  apk:
+    name: Build APK
     runs-on: ubuntu-latest
-    timeout-minutes: 15
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: npm
-      - run: npm ci
-      - run: npm audit --omit=dev --audit-level=high
-      - run: npm run check
-      - run: npx playwright install --with-deps chromium
-      - run: npm run test:e2e
-      - run: npm run test:e2e:local
-      - uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: browser-test-report
-          path: |
-            playwright-report/
-            playwright-local-report/
-          retention-days: 14
-
-  database:
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    services:
-      postgres:
-        image: postgres:17
-        env:
-          POSTGRES_USER: qa_admin
-          POSTGRES_PASSWORD: qa_password
-          POSTGRES_DB: carry_qa
-        ports: ['5432:5432']
-        options: >-
-          --health-cmd "pg_isready -U qa_admin -d carry_qa"
-          --health-interval 5s
-          --health-timeout 5s
-          --health-retries 10
+    timeout-minutes: 25
     env:
-      DATABASE_URL: postgresql://qa_admin:qa_password@localhost:5432/carry_qa
-      TEST_DATABASE_URL: postgresql://qa_admin:qa_password@localhost:5432/carry_qa
+      VITE_DATA_MODE: local
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
-      - run: npm ci
-      - run: psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f test/integration/bootstrap.sql
-      - run: npm run db:migrate
-      - run: psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f server/runtime-role.sql
-      - run: npm run test:integration
-      - run: npx playwright install --with-deps chromium
-      - run: npm run test:e2e:server
-      - uses: actions/upload-artifact@v4
-        if: always()
+      - uses: actions/setup-java@v4
         with:
-          name: server-browser-report
-          path: playwright-server-report/
-          retention-days: 14
+          distribution: temurin
+          java-version: 21
+      - uses: android-actions/setup-android@v3
+      - name: Install dependencies
+        run: npm ci
+      - name: Build and sync Android app
+        run: npm run android:sync
+      - name: Build installable APK
+        working-directory: android
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleDebug --no-daemon
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: Nomi-Carry-APK
+          path: android/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+          retention-days: 30
