@@ -78,3 +78,4 @@ server {
 If an unexpected issue arises post-deployment:
 1. Revert to the prior Git commit or previous static build artifact.
 2. In the event of schema rollback, restore the database snapshot taken immediately prior to migration as documented in `BACKUP_AND_RESTORE.md`.
+

@@ -61,3 +61,4 @@ GROUP BY c.id, c.full_name, c.opening_balance;
 - Customers and Products must **never be hard-deleted** if they have associated orders, invoices, or ledger transactions. They are marked `is_active = false`.
 - Historical invoice revisions are retained permanently for auditing.
 - Financial audit logs are append-only.
+

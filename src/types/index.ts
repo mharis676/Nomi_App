@@ -1,6 +1,6 @@
 // Domain Entity Types for Saudi Carry Charges System
 
-export type ChargeMethod = 'PER_UNIT' | 'PER_ORDER';
+export type ChargeMethod = 'PER_UNIT' | 'PER_ORDER' | 'PER_KG';
 export type UserRole = 'OWNER' | 'STAFF' | 'VIEWER';
 export type OrderStatus = 'DRAFT' | 'CONFIRMED' | 'CANCELLED';
 export type InvoiceStatus = 'UNPAID' | 'PARTIAL' | 'PAID' | 'REVISED' | 'CANCELLED';
@@ -46,7 +46,8 @@ export interface OrderItem {
   orderId?: string;
   productId: string;
   productNameSnapshot: string;
-  quantity: number;
+  quantity: number; // Unit quantity or Weight in KG if chargeMethod is PER_KG
+  weightKg?: number; // Explicit weight in KG when chargeMethod is PER_KG
   chargeMethod: ChargeMethod;
   carryCharge: number; // Snapshot of applied carry rate
   lineTotal: number;

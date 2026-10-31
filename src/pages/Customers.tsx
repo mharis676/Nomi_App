@@ -119,7 +119,7 @@ export const Customers: React.FC = () => {
 
   return (
     <div className="container-fluid py-4 px-3 px-md-4">
-      <div className="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
+      <div className="d-flex flex-column flex-sm-row justify-content-between align-items-sm-center gap-3 mb-3 mb-md-4">
         <div>
           <h3 className="fw-bold mb-1">Customers & Account Ledgers</h3>
           <p className="text-muted small mb-0">
@@ -127,7 +127,7 @@ export const Customers: React.FC = () => {
           </p>
         </div>
         {canEdit && (
-          <button className="btn btn-primary d-flex align-items-center gap-2" onClick={handleOpenCreateModal}>
+          <button className="btn btn-primary d-flex align-items-center justify-content-center gap-2 shadow-sm w-100 w-sm-auto" onClick={handleOpenCreateModal}>
             <i className="bi bi-person-plus-fill"></i> Add New Customer
           </button>
         )}
@@ -236,7 +236,7 @@ export const Customers: React.FC = () => {
       {/* Customer Modal */}
       {showModal && (
         <div className="modal show d-block" tabIndex={-1} style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
-          <div className="modal-dialog">
+          <div className="modal-dialog modal-dialog-centered modal-dialog-scrollable">
             <div className="modal-content border-0 shadow">
               <div className="modal-header bg-primary text-white">
                 <h5 className="modal-title fw-bold">
@@ -333,3 +333,4 @@ export const Customers: React.FC = () => {
     </div>
   );
 };
+

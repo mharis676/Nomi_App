@@ -61,3 +61,4 @@ This system is created to manage, calculate, invoice, and track **carry charges*
 2. Click on the customer name or click **Ledger**.
 3. Select an optional date filter or leave blank for complete history.
 4. Click **Download Statement PDF** to generate an official branded PDF statement with opening balance, debits, credits, and closing balance.
+

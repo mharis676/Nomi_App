@@ -60,7 +60,12 @@ export const InvoiceDetail: React.FC = () => {
     const item = { ...updated[index], ...updates };
     const qty = Number(item.quantity) || 0;
     const rate = Number(item.carryCharge) || 0;
-    item.lineTotal = item.chargeMethod === 'PER_ORDER' ? rate : qty * rate;
+
+    if (item.chargeMethod === 'PER_KG') {
+      item.weightKg = qty;
+    }
+
+    item.lineTotal = item.chargeMethod === 'PER_ORDER' ? rate : Number((qty * rate).toFixed(2));
     updated[index] = item;
     setEditItems(updated);
   };
@@ -209,19 +214,23 @@ export const InvoiceDetail: React.FC = () => {
                             onChange={(e) => handleUpdateItem(idx, { chargeMethod: e.target.value as any })}
                           >
                             <option value="PER_UNIT">Per Unit</option>
+                            <option value="PER_KG">Per KG</option>
                             <option value="PER_ORDER">Per Order</option>
                           </select>
                         </td>
                         <td>
-                          <input
-                            type="number"
-                            min="0.01"
-                            step="any"
-                            className="form-control form-control-sm"
-                            value={item.quantity}
-                            onChange={(e) => handleUpdateItem(idx, { quantity: parseFloat(e.target.value) || 0 })}
-                            required
-                          />
+                          <div className="input-group input-group-sm">
+                            <input
+                              type="number"
+                              min="0.01"
+                              step={item.chargeMethod === 'PER_KG' ? '0.01' : '1'}
+                              className="form-control form-control-sm"
+                              value={item.quantity}
+                              onChange={(e) => handleUpdateItem(idx, { quantity: parseFloat(e.target.value) || 0 })}
+                              required
+                            />
+                            {item.chargeMethod === 'PER_KG' && <span className="input-group-text">KG</span>}
+                          </div>
                         </td>
                         <td>
                           <input
@@ -396,25 +405,36 @@ export const InvoiceDetail: React.FC = () => {
               <tr>
                 <th style={{ width: '40px' }} className="text-center">#</th>
                 <th>Item (Consignment Cargo)</th>
-                <th className="text-center" style={{ width: '130px' }}>Method</th>
-                <th className="text-center" style={{ width: '80px' }}>Qty</th>
+                <th className="text-center" style={{ width: '135px' }}>Method</th>
+                <th className="text-center" style={{ width: '110px' }}>Qty / Weight</th>
                 <th className="text-end" style={{ width: '140px' }}>Carry Rate</th>
                 <th className="text-end" style={{ width: '150px' }}>Line Total</th>
               </tr>
             </thead>
             <tbody>
-              {invoice.snapshotData.items.map((item, idx) => (
-                <tr key={item.id}>
-                  <td className="text-center">{idx + 1}</td>
-                  <td className="fw-semibold">{item.productNameSnapshot}</td>
-                  <td className="text-center small text-muted">
-                    {item.chargeMethod === 'PER_UNIT' ? 'Per Unit' : 'Per Order Flat'}
-                  </td>
-                  <td className="text-center">{item.quantity}</td>
-                  <td className="text-end">{formatCurrency(item.carryCharge, invoice.currency)}</td>
-                  <td className="text-end fw-bold">{formatCurrency(item.lineTotal, invoice.currency)}</td>
-                </tr>
-              ))}
+              {invoice.snapshotData.items.map((item, idx) => {
+                const isPerKg = item.chargeMethod === 'PER_KG';
+                const methodLabel = isPerKg
+                  ? 'Per KG'
+                  : item.chargeMethod === 'PER_ORDER'
+                  ? 'Per Order Flat'
+                  : 'Per Unit';
+                const qtyOrWeight = isPerKg
+                  ? `${item.weightKg ?? item.quantity} KG`
+                  : item.quantity;
+                const rateText = `${formatCurrency(item.carryCharge, invoice.currency)}${isPerKg ? '/kg' : ''}`;
+
+                return (
+                  <tr key={item.id}>
+                    <td className="text-center">{idx + 1}</td>
+                    <td className="fw-semibold">{item.productNameSnapshot}</td>
+                    <td className="text-center small text-muted">{methodLabel}</td>
+                    <td className="text-center fw-semibold">{qtyOrWeight}</td>
+                    <td className="text-end">{rateText}</td>
+                    <td className="text-end fw-bold">{formatCurrency(item.lineTotal, invoice.currency)}</td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
@@ -507,3 +527,4 @@ export const InvoiceDetail: React.FC = () => {
     </div>
   );
 };
+

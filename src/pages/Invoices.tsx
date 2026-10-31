@@ -177,3 +177,4 @@ export const Invoices: React.FC = () => {
     </div>
   );
 };
+

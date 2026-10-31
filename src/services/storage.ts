@@ -131,6 +131,19 @@ const SEED_PRODUCTS: Product[] = [
     createdAt: new Date('2026-01-05T10:00:00Z').toISOString(),
     updatedAt: new Date('2026-01-05T10:00:00Z').toISOString(),
   },
+  {
+    id: 'prod-5',
+    sku: 'SAUDI-NUTS-KG',
+    name: 'Madinah Pistachio & Mixed Dry Fruits (Weight Cargo)',
+    category: 'Food & Dates',
+    defaultCarryCharge: 800,
+    chargeMethod: 'PER_KG',
+    currency: 'PKR',
+    notes: 'Freight charge per kilogram based on luggage scale weight',
+    isActive: true,
+    createdAt: new Date('2026-01-05T10:00:00Z').toISOString(),
+    updatedAt: new Date('2026-01-05T10:00:00Z').toISOString(),
+  },
 ];
 
 class StorageService {
@@ -281,8 +294,38 @@ class StorageService {
   }
 
   public saveProduct(product: Omit<Product, 'id' | 'createdAt' | 'updatedAt'> & { id?: string }): Product {
+    if (!product.name || !product.name.trim()) {
+      throw new Error('Product name is required.');
+    }
+    if (product.defaultCarryCharge === undefined || product.defaultCarryCharge === null || Number(product.defaultCarryCharge) < 0) {
+      throw new Error('Default carry charge cannot be negative.');
+    }
+    const validMethods = ['PER_UNIT', 'PER_ORDER', 'PER_KG'];
+    if (!validMethods.includes(product.chargeMethod)) {
+      throw new Error('Invalid charging method. Must be Per Unit, Per Order, or Per KG.');
+    }
+
     const products = this.getProducts();
     const now = new Date().toISOString();
+
+    const trimmedName = product.name.trim().toLowerCase();
+    const trimmedSku = product.sku && product.sku.trim() ? product.sku.trim().toLowerCase() : null;
+
+    // Check for accidental duplicate products
+    const duplicate = products.find(
+      (p) =>
+        p.id !== product.id &&
+        p.isActive &&
+        (p.name.trim().toLowerCase() === trimmedName ||
+          (trimmedSku && p.sku && p.sku.trim().toLowerCase() === trimmedSku))
+    );
+
+    if (duplicate) {
+      if (trimmedSku && duplicate.sku && duplicate.sku.trim().toLowerCase() === trimmedSku) {
+        throw new Error(`A product with SKU "${duplicate.sku}" already exists ("${duplicate.name}").`);
+      }
+      throw new Error(`A product with the name "${duplicate.name}" already exists in the catalog.`);
+    }
 
     if (product.id) {
       const index = products.findIndex((p) => p.id === product.id);
@@ -290,6 +333,10 @@ class StorageService {
       const updated: Product = {
         ...products[index],
         ...product,
+        name: product.name.trim(),
+        sku: product.sku?.trim() || undefined,
+        category: product.category?.trim() || undefined,
+        notes: product.notes?.trim() || undefined,
         id: product.id,
         updatedAt: now,
       };
@@ -300,6 +347,10 @@ class StorageService {
     } else {
       const newProduct: Product = {
         ...product,
+        name: product.name.trim(),
+        sku: product.sku?.trim() || undefined,
+        category: product.category?.trim() || undefined,
+        notes: product.notes?.trim() || undefined,
         id: 'prod-' + Date.now() + '-' + Math.random().toString(36).substring(2, 7),
         createdAt: now,
         updatedAt: now,

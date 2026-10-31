@@ -230,3 +230,4 @@ A specialized, secure web application designed specifically to manage, invoice, 
    - Positive Balance: Customer owes business (Receivable).
    - Zero: Settle.
    - Negative Balance: Customer has advance credit (Customer Advance).
+

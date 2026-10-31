@@ -14,26 +14,57 @@ export function roundToTwo(num: number | string | Decimal): number {
 /**
  * Calculates line total for an item based on its charge method.
  * - PER_UNIT: Quantity * CarryChargePerUnit
- * - PER_ORDER: CarryChargeForOrder (independent of quantity)
+ * - PER_KG: Weight (KG) * CarryChargePerKg
+ * - PER_ORDER: CarryChargeForOrder (independent of quantity/weight)
  */
 export function calculateLineTotal(
-  quantity: number | string,
+  quantityOrWeight: number | string,
   carryCharge: number | string,
   chargeMethod: ChargeMethod
 ): number {
-  const qty = new Decimal(quantity || 0);
+  const val = new Decimal(quantityOrWeight || 0);
   const rate = new Decimal(carryCharge || 0);
 
-  if (qty.isNegative() || rate.isNegative()) {
-    throw new Error('Quantity and carry charge cannot be negative.');
+  if (val.isNegative() || rate.isNegative()) {
+    throw new Error('Quantity/Weight and carry charge cannot be negative.');
   }
 
   if (chargeMethod === 'PER_ORDER') {
     return roundToTwo(rate);
   }
 
-  // PER_UNIT
-  return roundToTwo(qty.times(rate));
+  // PER_UNIT or PER_KG
+  return roundToTwo(val.times(rate));
+}
+
+/**
+ * Returns human-readable label for the charging method.
+ */
+export function getChargeMethodLabel(method: ChargeMethod): string {
+  switch (method) {
+    case 'PER_KG':
+      return 'Per KG';
+    case 'PER_ORDER':
+      return 'Per Order';
+    case 'PER_UNIT':
+    default:
+      return 'Per Unit';
+  }
+}
+
+/**
+ * Returns unit suffix for rates (e.g., "/ kg", "/ unit").
+ */
+export function getChargeUnitSuffix(method: ChargeMethod): string {
+  switch (method) {
+    case 'PER_KG':
+      return '/ kg';
+    case 'PER_ORDER':
+      return 'flat';
+    case 'PER_UNIT':
+    default:
+      return '/ unit';
+  }
 }
 
 export interface OrderCalculationResult {
@@ -53,9 +84,12 @@ export function calculateOrderTotals(
   additionalCharges: number | string = 0
 ): OrderCalculationResult {
   const calculatedItems = items.map((item) => {
-    const lineTotal = calculateLineTotal(item.quantity, item.carryCharge, item.chargeMethod);
+    const measure = item.chargeMethod === 'PER_KG' ? (item.weightKg ?? item.quantity) : item.quantity;
+    const lineTotal = calculateLineTotal(measure, item.carryCharge, item.chargeMethod);
     return {
       ...item,
+      quantity: measure,
+      weightKg: item.chargeMethod === 'PER_KG' ? measure : item.weightKg,
       lineTotal,
     };
   });
@@ -117,3 +151,4 @@ export function calculateBalance(
   const cred = new Decimal(credits || 0);
   return roundToTwo(op.plus(deb).minus(cred));
 }
+

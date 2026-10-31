@@ -36,3 +36,4 @@
 - `.env` and secret keys MUST be excluded in `.gitignore`.
 - Only `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` (public anon key with RLS enforcement) may be exposed to the client.
 - The `SUPABASE_SERVICE_ROLE_KEY` is restricted exclusively to administrative migration tools and backend automation scripts.
+

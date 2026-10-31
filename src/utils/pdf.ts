@@ -73,18 +73,33 @@ export function generateInvoicePDF(invoice: Invoice, settings: BusinessSettings)
   doc.text(`Code: ${invoice.snapshotData.customer.customerCode} | Phone: ${invoice.snapshotData.customer.phone || 'N/A'}`, 18, 80);
 
   // --- Table of Items ---
-  const tableRows = invoice.snapshotData.items.map((item, idx) => [
-    idx + 1,
-    item.productNameSnapshot,
-    item.chargeMethod === 'PER_UNIT' ? 'Per Unit' : 'Per Order Flat',
-    item.quantity,
-    formatCurrency(item.carryCharge, currency),
-    formatCurrency(item.lineTotal, currency),
-  ]);
+  const tableRows = invoice.snapshotData.items.map((item, idx) => {
+    let methodLabel = 'Per Unit';
+    let qtyOrWeight: string | number = item.quantity;
+
+    if (item.chargeMethod === 'PER_KG') {
+      methodLabel = 'Per KG';
+      qtyOrWeight = `${item.weightKg ?? item.quantity} KG`;
+    } else if (item.chargeMethod === 'PER_ORDER') {
+      methodLabel = 'Per Order Flat';
+    }
+
+    const rateSuffix = item.chargeMethod === 'PER_KG' ? '/kg' : '';
+    const rateText = `${formatCurrency(item.carryCharge, currency)}${rateSuffix}`;
+
+    return [
+      idx + 1,
+      item.productNameSnapshot,
+      methodLabel,
+      qtyOrWeight,
+      rateText,
+      formatCurrency(item.lineTotal, currency),
+    ];
+  });
 
   autoTable(doc, {
     startY: 88,
-    head: [['#', 'Description (Item)', 'Charging Method', 'Qty', 'Carry Rate', 'Line Total']],
+    head: [['#', 'Description (Item)', 'Charging Method', 'Qty / Weight', 'Carry Rate', 'Line Total']],
     body: tableRows,
     theme: 'striped',
     headStyles: {
@@ -299,3 +314,4 @@ export function generateStatementPDF(
 
   doc.save(`Statement_${customer.customerCode}_${new Date().toISOString().split('T')[0]}.pdf`);
 }
+

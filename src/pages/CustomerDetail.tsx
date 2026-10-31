@@ -106,7 +106,7 @@ export const CustomerDetail: React.FC = () => {
           </h4>
         </div>
 
-        <div className="d-flex gap-2">
+        <div className="d-flex flex-wrap gap-2">
           {canEdit && (
             <button
               className="btn btn-success btn-sm d-flex align-items-center gap-1 shadow-sm"
@@ -296,7 +296,7 @@ export const CustomerDetail: React.FC = () => {
       {/* Record Payment Modal */}
       {showPaymentModal && (
         <div className="modal show d-block" tabIndex={-1} style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
-          <div className="modal-dialog">
+          <div className="modal-dialog modal-dialog-centered modal-dialog-scrollable">
             <div className="modal-content border-0 shadow">
               <div className="modal-header bg-success text-white">
                 <h5 className="modal-title fw-bold">Record Customer Payment</h5>
@@ -396,3 +396,4 @@ export const CustomerDetail: React.FC = () => {
     </div>
   );
 };
+

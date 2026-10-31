@@ -40,7 +40,7 @@ CREATE TABLE IF NOT EXISTS public.products (
     name TEXT NOT NULL,
     category TEXT,
     default_carry_charge NUMERIC(14, 2) NOT NULL CHECK (default_carry_charge >= 0),
-    charge_method TEXT NOT NULL CHECK (charge_method IN ('PER_UNIT', 'PER_ORDER')) DEFAULT 'PER_UNIT',
+    charge_method TEXT NOT NULL CHECK (charge_method IN ('PER_UNIT', 'PER_ORDER', 'PER_KG')) DEFAULT 'PER_UNIT',
     currency TEXT NOT NULL DEFAULT 'PKR',
     notes TEXT,
     is_active BOOLEAN NOT NULL DEFAULT true,
@@ -78,7 +78,8 @@ CREATE TABLE IF NOT EXISTS public.order_items (
     product_id UUID REFERENCES public.products(id),
     product_name_snapshot TEXT NOT NULL,
     quantity NUMERIC(12, 2) NOT NULL CHECK (quantity > 0),
-    charge_method TEXT NOT NULL CHECK (charge_method IN ('PER_UNIT', 'PER_ORDER')),
+    charge_method TEXT NOT NULL CHECK (charge_method IN ('PER_UNIT', 'PER_ORDER', 'PER_KG')),
+    weight_kg NUMERIC(12, 3),
     carry_charge NUMERIC(14, 2) NOT NULL CHECK (carry_charge >= 0),
     line_total NUMERIC(14, 2) NOT NULL CHECK (line_total >= 0),
     created_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now())
@@ -313,3 +314,4 @@ ON public.audit_logs FOR INSERT TO authenticated WITH CHECK (true);
 CREATE POLICY "Audit logs readable by OWNER only"
 ON public.audit_logs FOR SELECT TO authenticated
 USING (public.current_user_role() = 'OWNER');
+

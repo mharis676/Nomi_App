@@ -561,4 +561,158 @@ describe('Customer Ledger & Financial Reconciliation Suite', () => {
     expect(historicalInvoice?.snapshotData.items[0].carryCharge).toBe(500);
     expect(historicalInvoice?.snapshotData.items[0].lineTotal).toBe(1000);
   });
+
+  it('15. Saves new PER_KG product to central catalog and prevents accidental duplicates', () => {
+    const product = storage.saveProduct({
+      name: 'Fresh Saudi Dates (Loose Cargo)',
+      sku: 'DATES-WEIGHT-01',
+      category: 'Food',
+      defaultCarryCharge: 750,
+      chargeMethod: 'PER_KG',
+      currency: 'PKR',
+      isActive: true,
+    });
+
+    expect(product.id).toBeDefined();
+    expect(product.chargeMethod).toBe('PER_KG');
+    expect(storage.getProduct(product.id)?.defaultCarryCharge).toBe(750);
+
+    // Attempting to save duplicate name or SKU must throw
+    expect(() =>
+      storage.saveProduct({
+        name: 'Fresh Saudi Dates (Loose Cargo)',
+        category: 'Food',
+        defaultCarryCharge: 800,
+        chargeMethod: 'PER_KG',
+        currency: 'PKR',
+        isActive: true,
+      })
+    ).toThrow(/already exists/);
+
+    expect(() =>
+      storage.saveProduct({
+        name: 'Different Name',
+        sku: 'DATES-WEIGHT-01',
+        defaultCarryCharge: 800,
+        chargeMethod: 'PER_KG',
+        currency: 'PKR',
+        isActive: true,
+      })
+    ).toThrow(/already exists/);
+  });
+
+  it('16. Confirms order with PER_KG items and posts decimal weight calculation to ledger', () => {
+    const customer = storage.saveCustomer({
+      customerCode: 'TEST-016',
+      fullName: 'Weight Cargo Customer',
+      openingBalance: 0,
+      isActive: true,
+    });
+
+    const kgProduct = storage.saveProduct({
+      name: 'Saudi Pistachios In Shell',
+      defaultCarryCharge: 600,
+      chargeMethod: 'PER_KG',
+      currency: 'PKR',
+      isActive: true,
+    });
+
+    // 3.5 KG at 600 PKR/KG = 2,100.00
+    const { invoice } = storage.confirmOrder({
+      customerId: customer.id,
+      items: [
+        {
+          id: 'item-1',
+          productId: kgProduct.id,
+          productNameSnapshot: kgProduct.name,
+          quantity: 3.5,
+          weightKg: 3.5,
+          chargeMethod: 'PER_KG',
+          carryCharge: 600,
+          lineTotal: 2100,
+        },
+      ],
+    });
+
+    expect(invoice.grandTotal).toBe(2100);
+    expect(invoice.snapshotData.items[0].chargeMethod).toBe('PER_KG');
+    expect(invoice.snapshotData.items[0].quantity).toBe(3.5);
+
+    const statement = storage.getCustomerStatement(customer.id);
+    expect(statement.debits).toBe(2100);
+    expect(statement.closingBalance).toBe(2100);
+  });
+
+  it('17. Revises PER_KG invoice (e.g. weight increased from 3.5 to 5.0 KG) with balanced differential adjustment', () => {
+    const customer = storage.saveCustomer({
+      customerCode: 'TEST-017',
+      fullName: 'Weight Revision Customer',
+      openingBalance: 0,
+      isActive: true,
+    });
+
+    const kgProduct = storage.saveProduct({
+      name: 'Al-Qassim Mixed Cargo',
+      defaultCarryCharge: 1000,
+      chargeMethod: 'PER_KG',
+      currency: 'PKR',
+      isActive: true,
+    });
+
+    // Initial order: 2.5 KG at 1000 = 2,500
+    const { invoice } = storage.confirmOrder({
+      customerId: customer.id,
+      items: [
+        {
+          id: 'item-1',
+          productId: kgProduct.id,
+          productNameSnapshot: kgProduct.name,
+          quantity: 2.5,
+          weightKg: 2.5,
+          chargeMethod: 'PER_KG',
+          carryCharge: 1000,
+          lineTotal: 2500,
+        },
+      ],
+    });
+
+    // Customer paid 1500
+    storage.recordPayment({
+      customerId: customer.id,
+      invoiceId: invoice.id,
+      amount: 1500,
+      paymentMethod: 'CASH',
+    });
+
+    // Luggage re-weighted at 4.25 KG (Line total = 4250, diff = +1750)
+    const revised = storage.reviseInvoice(
+      invoice.id,
+      [
+        {
+          id: 'item-1',
+          productId: kgProduct.id,
+          productNameSnapshot: kgProduct.name,
+          quantity: 4.25,
+          weightKg: 4.25,
+          chargeMethod: 'PER_KG',
+          carryCharge: 1000,
+          lineTotal: 4250,
+        },
+      ],
+      0,
+      0,
+      'Luggage re-weighed at airport scale: 4.25 KG'
+    );
+
+    expect(revised.grandTotal).toBe(4250);
+    expect(revised.currentRevision).toBe(2);
+
+    const statement = storage.getCustomerStatement(customer.id);
+    // Debits: 2500 (orig) + 1750 (adjustment) = 4250
+    // Credits: 1500 (payment intact)
+    // Balance: 4250 - 1500 = 2750
+    expect(statement.debits).toBe(4250);
+    expect(statement.credits).toBe(1500);
+    expect(statement.closingBalance).toBe(2750);
+  });
 });
