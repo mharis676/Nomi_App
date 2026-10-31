@@ -61,7 +61,7 @@ export const Invoices: React.FC = () => {
             <div className="col-12 col-md-4">
               <select
                 className="form-select"
-                value={statusFilter}
+                aria-label="Filter by invoice status" value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value)}
               >
                 <option value="ALL">All Statuses</option>
@@ -85,7 +85,7 @@ export const Invoices: React.FC = () => {
               No invoices match your search or filter.
             </div>
           ) : (
-            <div className="table-responsive">
+            <div className="table-responsive" tabIndex={0} role="region" aria-label="Scrollable records">
               <table className="table table-hover align-middle mb-0">
                 <thead className="table-light">
                   <tr>

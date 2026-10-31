@@ -11,3 +11,13 @@ coverage/
 .playwright/
 test-results/
 
+
+playwright-report/
+
+.qa-postgres/
+backups/
+*.backup.json
+
+playwright-server-report/
+
+playwright-local-report/

@@ -18,3 +18,4 @@ CHECK (charge_method IN ('PER_UNIT', 'PER_ORDER', 'PER_KG'));
 -- Add optional weight_kg column if not already present
 ALTER TABLE public.order_items
 ADD COLUMN IF NOT EXISTS weight_kg NUMERIC(12, 3);
+

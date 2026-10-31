@@ -1,81 +1,46 @@
-# DEPLOYMENT GUIDE
+# Deployment
 
-## Saudi Carry Charges & Customer Account Management System
+**Default local mode:** run `npm run build` and publish `dist/` to a static host, or use `npm start` locally. No login, database or Supabase setup is needed. Routes use URL hashes for static-host compatibility. The instructions below apply only to optional `VITE_DATA_MODE=server`.
 
-### 1. Hosting Architecture
-The application is structured as a modern Single Page Application (SPA) backed by Supabase PostgreSQL:
-- **Frontend Hosting Options**: Vercel, Netlify, Cloudflare Pages, AWS S3 + CloudFront, or any standard web server (Nginx/Apache).
-- **Backend & Database**: Managed Supabase project or self-hosted Supabase / PostgreSQL instance.
+## Architecture and constraints
 
----
+Deploy the Node server and compiled frontend together, behind HTTPS. Use a Supabase project for Auth and the PostgreSQL database in that same project. This application supports one trusted business workspace per deployment. Every active profile can read that workspace's operational records; roles restrict writes and audit access. It is not a multi-tenant SaaS isolation model.
 
-### 2. Environment Variables Configuration
-Set the following environment variables in your deployment dashboard:
+The canonical financial store is `application_state`, a PostgreSQL JSONB snapshot, with `application_requests` holding durable request results. The application server locks the workspace row, validates and calculates changes using the domain engine, writes the new snapshot and request result, and commits once. All writes are serialized. This favors correctness for a small business; snapshots are loaded as a whole. Benchmark expected data volume before onboarding large historical datasets. The older relational tables are retained for migration compatibility and are not a second active ledger.
 
-```ini
-VITE_SUPABASE_URL=https://<your-project-id>.supabase.co
-VITE_SUPABASE_ANON_KEY=<your-anon-public-key>
-VITE_APP_NAME="Saudi Carry Charges System"
-VITE_DEFAULT_CURRENCY="PKR"
+## Configure and initialize
+
+1. Create a Supabase project. Disable public account signup in its Auth settings; create/invite staff through the administrator dashboard. Set the production site URL and permitted password-reset redirects. Enable provider protections appropriate to the business.
+2. Configure `.env` using `.env.example`. The `VITE_*` URL and public key are build-time public configuration. `SUPABASE_URL` must exactly match the built frontend's URL. `DATABASE_URL` is server-only and must target the same project. Keep database passwords and administrative keys out of the frontend and GitHub artifacts. Use verified TLS for hosted PostgreSQL connections.
+3. With administrator `DATABASE_URL`, run `npm run db:migrate`. The runner applies ordered migrations in transactions, records checksums, and uses an advisory lock. Back up an existing installation first. A database with pre-existing legacy financial records requires a reviewed import; the runner refuses automatic adoption. Manually applied old schemas also need their migration history reconciled before using this runner.
+4. After creating a Supabase Auth account, insert a profile using that account's actual UUID in the SQL editor:
+
+```sql
+INSERT INTO public.profiles(id, full_name, role)
+VALUES ('actual-auth-user-uuid', 'Business owner', 'OWNER');
 ```
 
----
+Use STAFF for daily operations and VIEWER for read access. Role assignment is administrative. To disable an account immediately, set `profiles.is_active=false`; every API request checks this flag. Profiles are not created automatically from user-controlled metadata.
 
-### 3. Database Migration Deployment
-To apply database migrations to a production Supabase instance:
-```bash
-# Using Supabase CLI
-supabase db push
+5. Run `server/runtime-role.sql` as an administrator to create the restricted `carry_runtime` role. Set its password through the administrator's secure password workflow (for psql, `\password carry_runtime`). Use this account in the deployed server's `DATABASE_URL`. Its access is limited to profile reads, state reads/updates and request-history reads/inserts. Migration, backup, restore and account administration use separate administrator credentials.
+6. Set `APP_ORIGIN` to the exact public HTTPS origin. Configure `TRUST_PROXY_HOPS` only for a known proxy topology; do not enable broad proxy trust. Default port is 3000. Terminate HTTPS at the hosting platform or trusted reverse proxy.
+7. Run `npm ci`, `npm run check`, and database/browser checks in staging. Run `npm run build` with server-mode frontend configuration, then `npm run start:server`. The server rejects a demo build or mismatched Supabase URL. An uninitialized/unreachable database makes `/healthz` return 503.
 
-# Or execute SQL migration script directly via Supabase SQL Editor:
-# File: supabase/migrations/20261031000000_init_schema.sql
+For local development with Vite, use the exact Vite browser origin for `APP_ORIGIN` (for example `http://127.0.0.1:5173`) and run the API on port 3000. The production deployment serves both on the same origin and requires no CORS wildcard.
+
+## Container
+
+Build using the public values only:
+
+```sh
+docker build --build-arg VITE_SUPABASE_URL=https://your-project.supabase.co --build-arg VITE_SUPABASE_ANON_KEY=public-key -t carry-charges .
+docker run --env-file .env -p 3000:3000 carry-charges
 ```
 
----
+The image runs as an unprivileged user. Database migrations are an explicit administrator step before starting the service; they do not run with elevated credentials inside the application process. The container image has not been built locally because Docker's daemon is unavailable in this workspace.
 
-### 4. Build and Deployment Steps
+## Launch and recovery
 
-#### Step 1: Install Dependencies
-```bash
-npm ci
-```
+Verify real Supabase login/logout, role removal and disabling, a complete invoice/payment/revision/cancellation workflow, two simultaneous staff sessions, PDF downloads, and a database backup/restore in staging. Confirm browser HTTPS/CSP behavior at the actual public hostname. Run a representative data-volume check for the snapshot model. Configure hosting health checks, error monitoring and an encrypted scheduled backup destination; test restore before launch. Set GitHub branch protection to require both quality and database checks.
 
-#### Step 2: Run Tests and Type Check Gate
-```bash
-npm run test
-npm run typecheck
-```
-
-#### Step 3: Compile Production Assets
-```bash
-npm run build
-```
-This produces the distribution files in `/dist`.
-
-#### Step 4: Web Server Configuration (Nginx SPA Fallback)
-Ensure all client routes redirect to `index.html`:
-```nginx
-server {
-    listen 80;
-    server_name carrycharges.example.com;
-    root /var/www/saudi-carry-app/dist;
-    index index.html;
-
-    location / {
-        try_files $uri $uri/ /index.html;
-    }
-
-    # Security Headers
-    add_header X-Frame-Options "DENY";
-    add_header X-Content-Type-Options "nosniff";
-    add_header Referrer-Policy "strict-origin-when-cross-origin";
-}
-```
-
----
-
-### 5. Rollback Plan
-If an unexpected issue arises post-deployment:
-1. Revert to the prior Git commit or previous static build artifact.
-2. In the event of schema rollback, restore the database snapshot taken immediately prior to migration as documented in `BACKUP_AND_RESTORE.md`.
-
+Deploy a retained image/build with matching migrations. Financial migrations require a forward fix or a coordinated restore with all writers stopped; reverting frontend files alone does not roll back financial data. Do not migrate existing demo browser records automatically. Reconcile and import historical records explicitly with owner review.

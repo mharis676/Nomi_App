@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { isDemo } from '../services/backend';
 import { storage } from '../services/storage';
 import { AuditLog } from '../types';
 import { useAuth } from '../context/AuthContext';
@@ -6,6 +7,7 @@ import { useAuth } from '../context/AuthContext';
 export const Settings: React.FC = () => {
   const { isOwner } = useAuth();
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
+  const [saveError, setSaveError] = useState('');
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   // Form
@@ -31,11 +33,13 @@ export const Settings: React.FC = () => {
     setAuditLogs(storage.getAuditLogs());
   };
 
-  const handleSaveSettings = (e: React.FormEvent) => {
+  const handleSaveSettings = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!isOwner) return;
 
-    storage.updateBusinessSettings({
+    try {
+    setSaveError('');
+    await storage.updateBusinessSettings({
       businessName,
       phone,
       email,
@@ -44,6 +48,7 @@ export const Settings: React.FC = () => {
       invoiceFooterNote: footerNote,
     });
 
+    } catch (cause) { setSaveError(cause instanceof Error ? cause.message : 'Settings could not be saved.'); return; }
     setSuccessMessage('Business configuration updated successfully.');
     setTimeout(() => setSuccessMessage(null), 3000);
     loadSettings();
@@ -82,6 +87,7 @@ export const Settings: React.FC = () => {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+    URL.revokeObjectURL(url);
   };
 
   const handleExportCustomersCSV = () => {
@@ -109,10 +115,12 @@ export const Settings: React.FC = () => {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+    URL.revokeObjectURL(url);
   };
 
   return (
     <div className="container-fluid py-4 px-3 px-md-4">
+      {saveError && <div role="alert" className="alert alert-danger">{saveError}</div>}
       <div className="mb-4">
         <h3 className="fw-bold mb-1">Business Settings & Security Audit</h3>
         <p className="text-muted small mb-0">
@@ -124,7 +132,7 @@ export const Settings: React.FC = () => {
         <div className="alert alert-success alert-dismissible fade show" role="alert">
           <i className="bi bi-check-circle-fill me-2"></i>
           {successMessage}
-          <button type="button" className="btn-close" onClick={() => setSuccessMessage(null)}></button>
+          <button type="button" className="btn-close" aria-label="Close" onClick={() => setSuccessMessage(null)}></button>
         </div>
       )}
 
@@ -138,8 +146,8 @@ export const Settings: React.FC = () => {
             <div className="card-body">
               <form onSubmit={handleSaveSettings}>
                 <div className="mb-3">
-                  <label className="form-label fw-semibold">Business Name *</label>
-                  <input
+                  <label htmlFor="settings-field-1" className="form-label fw-semibold">Business Name *</label>
+                  <input id="settings-field-1"
                     type="text"
                     className="form-control"
                     value={businessName}
@@ -151,8 +159,8 @@ export const Settings: React.FC = () => {
 
                 <div className="row g-2 mb-3">
                   <div className="col-12 col-sm-6">
-                    <label className="form-label small fw-semibold">Contact Phone</label>
-                    <input
+                    <label htmlFor="settings-field-2" className="form-label small fw-semibold">Contact Phone</label>
+                    <input id="settings-field-2"
                       type="text"
                       className="form-control form-control-sm"
                       value={phone}
@@ -161,8 +169,8 @@ export const Settings: React.FC = () => {
                     />
                   </div>
                   <div className="col-12 col-sm-6">
-                    <label className="form-label small fw-semibold">Email Address</label>
-                    <input
+                    <label htmlFor="settings-field-3" className="form-label small fw-semibold">Email Address</label>
+                    <input id="settings-field-3"
                       type="email"
                       className="form-control form-control-sm"
                       value={email}
@@ -173,8 +181,8 @@ export const Settings: React.FC = () => {
                 </div>
 
                 <div className="mb-3">
-                  <label className="form-label small fw-semibold">Physical Address</label>
-                  <input
+                  <label htmlFor="settings-field-4" className="form-label small fw-semibold">Physical Address</label>
+                  <input id="settings-field-4"
                     type="text"
                     className="form-control form-control-sm"
                     value={address}
@@ -184,11 +192,12 @@ export const Settings: React.FC = () => {
                 </div>
 
                 <div className="mb-3">
-                  <label className="form-label small fw-semibold">Default Currency</label>
-                  <input
+                  <label htmlFor="settings-field-5" className="form-label small fw-semibold">Default Currency</label>
+                  <input id="settings-field-5"
                     type="text"
                     className="form-control form-control-sm"
                     value={currency}
+                      readOnly={!isDemo}
                     onChange={(e) => setCurrency(e.target.value)}
                     disabled={!isOwner}
                     required
@@ -196,8 +205,8 @@ export const Settings: React.FC = () => {
                 </div>
 
                 <div className="mb-3">
-                  <label className="form-label small fw-semibold">Invoice Footer Disclaimer *</label>
-                  <textarea
+                  <label htmlFor="settings-field-6" className="form-label small fw-semibold">Invoice Footer Disclaimer *</label>
+                  <textarea id="settings-field-6"
                     className="form-control form-control-sm"
                     rows={2}
                     value={footerNote}
@@ -254,21 +263,21 @@ export const Settings: React.FC = () => {
                 </button>
               </div>
 
-              <div className="alert alert-secondary py-2 small mb-0">
+              {isDemo && <div className="alert alert-secondary py-2 small mb-0">
                 <div className="fw-bold mb-1">State Reset (Testing / Staging Only):</div>
                 <button
                   type="button"
                   className="btn btn-outline-danger btn-sm"
                   onClick={() => {
                     if (window.confirm('Reset database state back to clean initial demo seed?')) {
-                      storage.init(true);
+                      if (isDemo) storage.init(true);
                       loadSettings();
                     }
                   }}
                 >
                   <i className="bi bi-arrow-counterclockwise me-1"></i> Re-seed Initial Dataset
                 </button>
-              </div>
+              </div>}
             </div>
           </div>
         </div>
@@ -281,7 +290,7 @@ export const Settings: React.FC = () => {
           <span className="badge bg-light text-dark border">{auditLogs.length} events logged</span>
         </div>
         <div className="card-body p-0">
-          <div className="table-responsive" style={{ maxHeight: '350px' }}>
+          <div className="table-responsive" tabIndex={0} role="region" aria-label="Scrollable records" style={{ maxHeight: '350px' }}>
             <table className="table table-sm table-striped align-middle mb-0">
               <thead className="table-light sticky-top">
                 <tr>

@@ -1,3 +1,4 @@
+import { ModalFrame } from '../components/ModalFrame';
 import React, { useState, useEffect } from 'react';
 import { storage } from '../services/storage';
 import { Product, ChargeMethod } from '../types';
@@ -55,7 +56,7 @@ export const Products: React.FC = () => {
     setShowModal(true);
   };
 
-  const handleSaveProduct = (e: React.FormEvent) => {
+  const handleSaveProduct = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!canEdit) {
       setError('You lack permission to modify the product catalog.');
@@ -72,7 +73,7 @@ export const Products: React.FC = () => {
 
     try {
       setError(null);
-      const saved = storage.saveProduct({
+      const saved = await storage.saveProduct({
         id: editingProduct ? editingProduct.id : undefined,
         name: name.trim(),
         sku: sku.trim() || undefined,
@@ -93,10 +94,10 @@ export const Products: React.FC = () => {
     }
   };
 
-  const handleArchive = (id: string, prodName: string) => {
+  const handleArchive = async (id: string, prodName: string) => {
     if (window.confirm(`Deactivate/archive "${prodName}"? Historical orders and invoices will keep their saved snapshot unaltered.`)) {
-      storage.archiveProduct(id);
-      loadProducts();
+      try { await storage.archiveProduct(id); loadProducts(); }
+      catch (cause) { setError(cause instanceof Error ? cause.message : 'Could not archive record.'); }
     }
   };
 
@@ -115,7 +116,7 @@ export const Products: React.FC = () => {
         <div className="alert alert-success alert-dismissible fade show shadow-sm d-flex align-items-center gap-2 mb-3" role="alert">
           <i className="bi bi-check-circle-fill fs-5 text-success"></i>
           <div>{successMessage}</div>
-          <button type="button" className="btn-close" onClick={() => setSuccessMessage(null)}></button>
+          <button type="button" className="btn-close" aria-label="Close" onClick={() => setSuccessMessage(null)}></button>
         </div>
       )}
 
@@ -133,6 +134,7 @@ export const Products: React.FC = () => {
         )}
       </div>
 
+      {error && !showModal && <div role="alert" className="alert alert-danger">{error}</div>}
       {/* Scope Reminder Alert */}
       <div className="alert alert-light border d-flex align-items-center gap-2 py-2 mb-3 shadow-sm">
         <i className="bi bi-shield-lock-fill text-primary fs-5"></i>
@@ -162,7 +164,7 @@ export const Products: React.FC = () => {
       {/* Product Table (with mobile responsive scroll) */}
       <div className="card border-0 shadow-sm">
         <div className="card-body p-0">
-          <div className="table-responsive">
+          <div className="table-responsive" tabIndex={0} role="region" aria-label="Scrollable records">
             <table className="table table-hover align-middle mb-0">
               <thead className="table-light">
                 <tr>
@@ -249,14 +251,14 @@ export const Products: React.FC = () => {
 
       {/* Product Modal */}
       {showModal && (
-        <div className="modal show d-block" tabIndex={-1} style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
+        <ModalFrame onClose={() => setShowModal(false)}>
           <div className="modal-dialog modal-dialog-centered modal-dialog-scrollable">
             <div className="modal-content border-0 shadow">
               <div className="modal-header bg-primary text-white">
                 <h5 className="modal-title fw-bold">
                   {editingProduct ? `Edit Product (${editingProduct.name})` : 'Add New Catalog Product'}
                 </h5>
-                <button type="button" className="btn-close btn-close-white" onClick={() => setShowModal(false)}></button>
+                <button type="button" className="btn-close btn-close-white" aria-label="Close" onClick={() => setShowModal(false)}></button>
               </div>
               <form onSubmit={handleSaveProduct}>
                 <div className="modal-body p-3 p-sm-4">
@@ -268,8 +270,8 @@ export const Products: React.FC = () => {
                   )}
 
                   <div className="mb-3">
-                    <label className="form-label fw-semibold">Product Name *</label>
-                    <input
+                    <label htmlFor="products-field-1" className="form-label fw-semibold">Product Name *</label>
+                    <input id="products-field-1"
                       type="text"
                       className="form-control"
                       value={name}
@@ -282,8 +284,8 @@ export const Products: React.FC = () => {
 
                   <div className="row g-2 mb-3">
                     <div className="col-12 col-sm-6">
-                      <label className="form-label small fw-semibold">SKU / Product Code</label>
-                      <input
+                      <label htmlFor="products-field-2" className="form-label small fw-semibold">SKU / Product Code</label>
+                      <input id="products-field-2"
                         type="text"
                         className="form-control form-control-sm"
                         value={sku}
@@ -292,8 +294,8 @@ export const Products: React.FC = () => {
                       />
                     </div>
                     <div className="col-12 col-sm-6">
-                      <label className="form-label small fw-semibold">Category</label>
-                      <input
+                      <label htmlFor="products-field-3" className="form-label small fw-semibold">Category</label>
+                      <input id="products-field-3"
                         type="text"
                         className="form-control form-control-sm"
                         value={category}
@@ -305,8 +307,8 @@ export const Products: React.FC = () => {
 
                   <div className="row g-2 mb-3">
                     <div className="col-12 col-sm-6">
-                      <label className="form-label small fw-semibold">Charging Method (Unit of Measure) *</label>
-                      <select
+                      <label htmlFor="products-field-4" className="form-label small fw-semibold">Charging Method (Unit of Measure) *</label>
+                      <select id="products-field-4"
                         className="form-select form-select-sm"
                         value={chargeMethod}
                         onChange={(e) => setChargeMethod(e.target.value as ChargeMethod)}
@@ -318,10 +320,10 @@ export const Products: React.FC = () => {
                       </select>
                     </div>
                     <div className="col-12 col-sm-6">
-                      <label className="form-label small fw-semibold">
+                      <label htmlFor="products-field-5" className="form-label small fw-semibold">
                         Default Carry Rate ({settings.currency} {getChargeUnitSuffix(chargeMethod)}) *
                       </label>
-                      <input
+                      <input id="products-field-5"
                         type="number"
                         min="0"
                         step="0.01"
@@ -334,8 +336,8 @@ export const Products: React.FC = () => {
                   </div>
 
                   <div className="mb-2">
-                    <label className="form-label small fw-semibold">Notes / Handling Guidelines</label>
-                    <textarea
+                    <label htmlFor="products-field-6" className="form-label small fw-semibold">Notes / Handling Guidelines</label>
+                    <textarea id="products-field-6"
                       className="form-control form-control-sm"
                       rows={2}
                       value={notes}
@@ -355,7 +357,7 @@ export const Products: React.FC = () => {
               </form>
             </div>
           </div>
-        </div>
+        </ModalFrame>
       )}
     </div>
   );

@@ -52,7 +52,10 @@ export const InvoiceDetail: React.FC = () => {
     );
   }
 
-  const calculatedEditTotals = calculateOrderTotals(editItems, editDiscount, editAdditional);
+  let calculatedEditTotals = calculateOrderTotals([], 0, 0);
+  let editCalculationError: string | null = null;
+  try { calculatedEditTotals = calculateOrderTotals(editItems, editDiscount, editAdditional); }
+  catch (cause) { editCalculationError = cause instanceof Error ? cause.message : 'Check invoice amounts.'; }
   const editDifference = calculatedEditTotals.grandTotal - invoice.grandTotal;
 
   const handleUpdateItem = (index: number, updates: Partial<OrderItem>) => {
@@ -70,7 +73,7 @@ export const InvoiceDetail: React.FC = () => {
     setEditItems(updated);
   };
 
-  const handleSaveRevision = (e: React.FormEvent) => {
+  const handleSaveRevision = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!revisionReason.trim()) {
       setError('Please provide a mandatory reason for this revision.');
@@ -79,7 +82,7 @@ export const InvoiceDetail: React.FC = () => {
 
     try {
       setError(null);
-      const updated = storage.reviseInvoice(
+      const updated = await storage.reviseInvoice(
         invoice.id,
         editItems,
         editDiscount,
@@ -95,7 +98,7 @@ export const InvoiceDetail: React.FC = () => {
     }
   };
 
-  const handleCancelInvoice = (e: React.FormEvent) => {
+  const handleCancelInvoice = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!cancelReason.trim()) {
       setError('Please enter a cancellation justification.');
@@ -104,7 +107,7 @@ export const InvoiceDetail: React.FC = () => {
 
     try {
       setError(null);
-      const updated = storage.cancelInvoice(invoice.id, cancelReason);
+      const updated = await storage.cancelInvoice(invoice.id, cancelReason);
       setInvoice(updated);
       setIsCancelling(false);
       setCancelReason('');
@@ -117,6 +120,7 @@ export const InvoiceDetail: React.FC = () => {
 
   return (
     <div className="container-fluid py-4 px-3 px-md-4">
+      {isEditing && editCalculationError && <div role="alert" className="alert alert-danger">{editCalculationError}</div>}
       {/* Top action buttons */}
       <div className="d-flex flex-column flex-sm-row justify-content-between align-items-sm-center gap-2 mb-4">
         <div className="d-flex align-items-center gap-2">
@@ -167,7 +171,7 @@ export const InvoiceDetail: React.FC = () => {
         <div className="alert alert-danger alert-dismissible fade show" role="alert">
           <i className="bi bi-exclamation-octagon-fill me-2"></i>
           {error}
-          <button type="button" className="btn-close" onClick={() => setError(null)}></button>
+          <button type="button" className="btn-close" aria-label="Close" onClick={() => setError(null)}></button>
         </div>
       )}
 
@@ -202,7 +206,7 @@ export const InvoiceDetail: React.FC = () => {
                           <input
                             type="text"
                             className="form-control form-control-sm"
-                            value={item.productNameSnapshot}
+                            aria-label="Item description" value={item.productNameSnapshot}
                             onChange={(e) => handleUpdateItem(idx, { productNameSnapshot: e.target.value })}
                             required
                           />
@@ -210,7 +214,7 @@ export const InvoiceDetail: React.FC = () => {
                         <td>
                           <select
                             className="form-select form-select-sm"
-                            value={item.chargeMethod}
+                            aria-label="Charge method" value={item.chargeMethod}
                             onChange={(e) => handleUpdateItem(idx, { chargeMethod: e.target.value as any })}
                           >
                             <option value="PER_UNIT">Per Unit</option>
@@ -225,7 +229,7 @@ export const InvoiceDetail: React.FC = () => {
                               min="0.01"
                               step={item.chargeMethod === 'PER_KG' ? '0.01' : '1'}
                               className="form-control form-control-sm"
-                              value={item.quantity}
+                              aria-label="Quantity or weight" value={item.quantity}
                               onChange={(e) => handleUpdateItem(idx, { quantity: parseFloat(e.target.value) || 0 })}
                               required
                             />
@@ -238,7 +242,7 @@ export const InvoiceDetail: React.FC = () => {
                             min="0"
                             step="0.01"
                             className="form-control form-control-sm"
-                            value={item.carryCharge}
+                            aria-label="Carry rate" value={item.carryCharge}
                             onChange={(e) => handleUpdateItem(idx, { carryCharge: parseFloat(e.target.value) || 0 })}
                             required
                           />
@@ -491,7 +495,7 @@ export const InvoiceDetail: React.FC = () => {
               This invoice is at its original revision (v1) with no subsequent modifications.
             </div>
           ) : (
-            <div className="table-responsive">
+            <div className="table-responsive" tabIndex={0} role="region" aria-label="Scrollable records">
               <table className="table table-sm align-middle mb-0">
                 <thead className="table-light">
                   <tr>

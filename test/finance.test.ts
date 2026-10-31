@@ -131,3 +131,9 @@ describe('Financial Calculation Engine', () => {
     expect(balance2).toBe(-500);
   });
 });
+
+it('rejects non-finite amounts before calculating financial totals', () => {
+  expect(() => calculateLineTotal(NaN, 100, 'PER_UNIT')).toThrow(/finite/);
+  expect(() => calculateLineTotal(1, Infinity, 'PER_UNIT')).toThrow(/finite/);
+  expect(() => calculateOrderTotals([], Infinity, 0)).toThrow(/finite/);
+});

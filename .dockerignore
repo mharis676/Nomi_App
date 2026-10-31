@@ -1,0 +1,15 @@
+node_modules
+.git
+dist
+.env
+.env.*
+.qa-postgres
+qa-artifacts
+playwright-report
+test-results
+backups
+
+test
+e2e
+e2e-server
+.github

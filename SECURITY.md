@@ -1,39 +1,15 @@
-# SECURITY & THREAT MODEL
+# Security
 
-## Saudi Carry Charges & Customer Account Management System
+Server mode authenticates access tokens by calling the configured Supabase Auth service's `getUser`. It then reads the current active profile and role from PostgreSQL. A client-supplied role is never accepted. Users cannot create profiles or change their roles through the API. Password resets and account provisioning are administrative/provider workflows.
 
-### 1. Threat Model & Mitigations
+OWNER can perform all application operations; STAFF can create/update customers and catalog items, confirm orders, revise invoices, and record payments; VIEWER has operational read access. Cancellation, refunds and business settings require OWNER. Only OWNER receives audit records. All users belong to the one business workspace; deployments requiring tenant separation need a separate isolation design.
 
-| Threat | Risk Level | Target Area | Mitigation Strategy |
-|---|---|---|---|
-| **Unauthorized Data Access** | Critical | Database / API | Supabase Row Level Security (RLS) enabled on all tables; strict JWT role verification (`OWNER`, `STAFF`, `VIEWER`). |
-| **IDOR (Insecure Direct Object Reference)** | High | Customers / Invoices | Server-side validation that requests only operate on records permitted by tenant/role context. |
-| **Financial Tampering / Client Calculation Bypass**| High | Order & Invoice API | Server/database-side validation recalculates all line totals, subtotals, and grand totals prior to confirmation. |
-| **Silent History Overwrite** | High | Invoices & Payments | Append-only ledger; immutable `invoice_revisions` table capturing snapshots, reasons, timestamps, and user IDs. |
-| **Duplicate Payments / Race Conditions** | Medium | Payments API | Idempotency keys enforced via unique database constraints on payments. |
-| **CSV / Formula Injection** | Medium | Reports Export | All exported text fields are sanitized and prepended with a quote if starting with `=`, `+`, `-`, or `@`. |
-| **Exposed Secrets** | Critical | Frontend & Git | Service-role keys and administrative credentials never embedded in client bundles; strictly kept in environment variables. |
-| **PDF Manipulation / Unauthorized Access** | Medium | Invoices & Statements | Dynamic generation from verified database snapshots; no unauthenticated public links. |
+Financial APIs validate fields and amounts on the server, recalculate line totals, lock the workspace row, compare its revision, and atomically persist records, ledger changes and actor-attributed audit entries. Durable request UUIDs and payload fingerprints protect retries. Concurrent stale writes return 409; the browser fetches current records and asks the user to review before resubmitting. Database storage errors roll back the full transaction. Opening balances cannot be rewritten through customer edits; refunds cannot exceed available credit.
 
----
+Browser roles have no direct access to financial or state tables. Use the restricted server database role from `server/runtime-role.sql`; database administrator credentials are required for migrations and recovery only. Never publish `DATABASE_URL`, database passwords or service-role keys. The application uses the public Supabase key and does not require a service-role key.
 
-### 2. Role-Based Access Control (RBAC) Matrix
+The server applies security headers/CSP, input-size limits, rate limits, same-origin checks for browser mutations, no-store API responses, static asset caching and database timeouts. HTTPS and correct proxy configuration are deployment requirements. Browser business data is held in memory; authentication session storage is scoped to the current tab. Sign-out clears the local session and cached records. Browser-local demo mode must be explicitly enabled and cannot be served by the production server.
 
-| Action | OWNER | STAFF | VIEWER |
-|---|:---:|:---:|:---:|
-| View Customers, Products, Invoices, Ledger | Yes | Yes | Yes |
-| Create Customers & Catalog Products | Yes | Yes | No |
-| Create & Confirm Orders | Yes | Yes | No |
-| Record Payments | Yes | Yes | No |
-| Edit Invoices & Post Revisions | Yes | Yes (logged) | No |
-| Cancel Invoices / Post Ledger Adjustments | Yes | No | No |
-| Modify Business Settings & Rates | Yes | No | No |
-| Access Audit Logs | Yes | No | No |
+Backups contain sensitive records and require encryption/access controls. Administrators can modify the underlying database and restore old snapshots; the application audit is not a cryptographically tamper-proof external audit system. Use external audit retention if the business requires it.
 
----
-
-### 3. Environment Variable Security Policy
-- `.env` and secret keys MUST be excluded in `.gitignore`.
-- Only `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` (public anon key with RLS enforcement) may be exposed to the client.
-- The `SUPABASE_SERVICE_ROLE_KEY` is restricted exclusively to administrative migration tools and backend automation scripts.
-
+Local tests cover PostgreSQL transaction and role boundaries plus a browser journey with a test identity service. Actual Supabase settings, email delivery, account recovery, public HTTPS behavior and managed backups must be verified in staging before launch.

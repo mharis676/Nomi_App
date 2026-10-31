@@ -1,0 +1,48 @@
+import { test, expect } from '@playwright/test';
+test('local workspace opens without login and preserves orders/payments after reload', async ({ page, isMobile }) => {
+  test.setTimeout(60_000);
+  const apiRequests: string[] = [];
+  page.on('request', request => { if (new URL(request.url()).pathname.startsWith('/api/')) apiRequests.push(request.url()); });
+  await page.goto('/');
+  await expect(page.getByRole('heading', { name: 'Overview', exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Sign in' })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Sign out' })).toHaveCount(0);
+  await expect(page.getByLabel('Simulated role')).toHaveCount(0);
+  // Keep navigation visible for this workflow; menu behavior has separate mobile coverage.
+  if (isMobile) await page.getByRole('button', { name: 'Toggle navigation' }).click();
+ if (isMobile && await page.getByRole('button', { name: 'Toggle navigation' }).getAttribute('aria-expanded') === 'false') await page.getByRole('button', { name: 'Toggle navigation' }).click();
+ await page.getByRole('link', { name: 'Customers', exact: true }).click();
+ await page.getByRole('button', { name: /Add.*Customer|New Customer/ }).click();
+ await page.getByLabel('Customer Full Name', { exact: false }).fill('Local QA Customer');
+ await page.getByRole('dialog').getByRole('button', { name: /Save|Create|Add to Catalog/ }).click();
+ await expect(page.getByRole('dialog')).toHaveCount(0);
+ if (isMobile && await page.getByRole('button', { name: 'Toggle navigation' }).getAttribute('aria-expanded') === 'false') await page.getByRole('button', { name: 'Toggle navigation' }).click();
+ await page.getByRole('link', { name: 'Catalog', exact: true }).click();
+ await page.getByRole('button', { name: /Add.*Product|New Product/ }).click();
+ await page.getByLabel('Product Name', { exact: false }).fill('Local QA Cargo');
+ await page.getByRole('dialog').locator('input[type="number"]').fill('100');
+ await page.getByRole('dialog').getByRole('button', { name: /Save|Create|Add to Catalog/ }).click();
+ await expect(page.getByRole('dialog')).toHaveCount(0);
+ if (isMobile && await page.getByRole('button', { name: 'Toggle navigation' }).getAttribute('aria-expanded') === 'false') await page.getByRole('button', { name: 'Toggle navigation' }).click();
+ await page.getByRole('link', { name: 'New order', exact: true }).click();
+ await page.getByRole('button', { name: 'Add from Catalog' }).click();
+ await page.getByRole('button', { name: /Local QA Cargo/ }).click();
+ await page.getByRole('button', { name: /Confirm Order/ }).click();
+ await expect(page).toHaveURL(/invoices\/inv-/);
+ await page.reload();
+ await expect(page.locator('main')).toContainText('Local QA Cargo');
+ if (isMobile && await page.getByRole('button', { name: 'Toggle navigation' }).getAttribute('aria-expanded') === 'false') await page.getByRole('button', { name: 'Toggle navigation' }).click();
+ await page.getByRole('link', { name: 'Payments', exact: true }).click();
+ await page.getByRole('button', { name: 'Record New Payment' }).click();
+ await page.getByLabel(/Apply to Specific Invoice/).selectOption({ index: 1 });
+ await page.getByLabel(/Payment Amount/).fill('100');
+ await page.getByRole('dialog').getByRole('button', { name: /Save|Record Payment|Confirm/ }).click();
+ await expect(page.getByRole('dialog')).toHaveCount(0);
+ await page.reload();
+ await expect(page.locator('main table')).toContainText('100.00');
+
+  expect(apiRequests).toEqual([]);
+  const snapshot = await page.evaluate(() => JSON.parse(localStorage.getItem('carry-workspace-v1')!));
+  expect(snapshot.state.saudi_carry_invoices).toHaveLength(1);
+  expect(snapshot.state.saudi_carry_payments).toHaveLength(1);
+});

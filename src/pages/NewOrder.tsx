@@ -1,3 +1,4 @@
+import { ModalFrame } from '../components/ModalFrame';
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { storage } from '../services/storage';
@@ -95,7 +96,7 @@ export const NewOrder: React.FC = () => {
     setItems(items.filter((_, idx) => idx !== index));
   };
 
-  const handleQuickCreateProduct = (e: React.FormEvent) => {
+  const handleQuickCreateProduct = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!quickName.trim()) {
       setQuickError('Product name is required.');
@@ -108,7 +109,7 @@ export const NewOrder: React.FC = () => {
 
     try {
       setQuickError(null);
-      const saved = storage.saveProduct({
+      const saved = await storage.saveProduct({
         name: quickName.trim(),
         category: quickCategory.trim() || undefined,
         defaultCarryCharge: quickRate,
@@ -132,9 +133,15 @@ export const NewOrder: React.FC = () => {
     }
   };
 
-  const totals = calculateOrderTotals(items, discount, additionalCharges);
+  let calculationError: string | null = null;
+  let totals = calculateOrderTotals([], 0, 0);
+  try {
+    totals = calculateOrderTotals(items, discount, additionalCharges);
+  } catch (cause) {
+    calculationError = cause instanceof Error ? cause.message : 'Check the order amounts.';
+  }
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!canEdit) {
       setError('You do not have permission to confirm orders.');
@@ -153,7 +160,7 @@ export const NewOrder: React.FC = () => {
       setIsSubmitting(true);
       setError(null);
 
-      const { invoice } = storage.confirmOrder({
+      const { invoice } = await storage.confirmOrder({
         customerId: selectedCustomerId,
         items,
         discount,
@@ -181,11 +188,11 @@ export const NewOrder: React.FC = () => {
         </div>
       </div>
 
-      {error && (
+      {(error || calculationError) && (
         <div className="alert alert-danger alert-dismissible fade show shadow-sm" role="alert">
           <i className="bi bi-exclamation-triangle-fill me-2"></i>
-          {error}
-          <button type="button" className="btn-close" onClick={() => setError(null)}></button>
+          {error || calculationError}
+          <button type="button" className="btn-close" aria-label="Close" onClick={() => setError(null)}></button>
         </div>
       )}
 
@@ -202,7 +209,7 @@ export const NewOrder: React.FC = () => {
                 <div className="row g-2 align-items-center">
                   <div className="col-12 col-md-8">
                     <label className="form-label fw-semibold small">Customer Name & Code *</label>
-                    <select
+                    <select aria-label="Customer name and code"
                       className="form-select"
                       value={selectedCustomerId}
                       onChange={(e) => setSelectedCustomerId(e.target.value)}
@@ -306,7 +313,7 @@ export const NewOrder: React.FC = () => {
                               <input
                                 type="text"
                                 className="form-control form-control-sm"
-                                value={item.productNameSnapshot}
+                                aria-label="Item description" value={item.productNameSnapshot}
                                 onChange={(e) => handleUpdateItem(idx, { productNameSnapshot: e.target.value })}
                                 required
                               />
@@ -317,7 +324,7 @@ export const NewOrder: React.FC = () => {
                                 <label className="form-label small fw-semibold mb-1">Method</label>
                                 <select
                                   className="form-select form-select-sm"
-                                  value={item.chargeMethod}
+                                  aria-label="Charge method" value={item.chargeMethod}
                                   onChange={(e) => handleUpdateItem(idx, { chargeMethod: e.target.value as ChargeMethod })}
                                 >
                                   <option value="PER_UNIT">Per Unit</option>
@@ -331,10 +338,10 @@ export const NewOrder: React.FC = () => {
                                 </label>
                                 <input
                                   type="number"
-                                  min="0.01"
+                                  min={isPerKg ? '0.01' : '1'}
                                   step={isPerKg ? '0.01' : '1'}
                                   className="form-control form-control-sm"
-                                  value={item.quantity}
+                                  aria-label="Quantity or weight" value={item.quantity}
                                   onChange={(e) => handleUpdateItem(idx, { quantity: parseFloat(e.target.value) || 0 })}
                                   required
                                 />
@@ -351,7 +358,7 @@ export const NewOrder: React.FC = () => {
                                   min="0"
                                   step="0.01"
                                   className={`form-control form-control-sm ${item.isOverridden ? 'border-warning bg-warning-subtle fw-semibold' : ''}`}
-                                  value={item.carryCharge}
+                                  aria-label="Carry rate" value={item.carryCharge}
                                   onChange={(e) =>
                                     handleUpdateItem(idx, {
                                       carryCharge: parseFloat(e.target.value) || 0,
@@ -400,7 +407,7 @@ export const NewOrder: React.FC = () => {
                                   <input
                                     type="text"
                                     className="form-control form-control-sm"
-                                    value={item.productNameSnapshot}
+                                    aria-label="Item description" value={item.productNameSnapshot}
                                     onChange={(e) => handleUpdateItem(idx, { productNameSnapshot: e.target.value })}
                                     required
                                   />
@@ -408,7 +415,7 @@ export const NewOrder: React.FC = () => {
                                 <td>
                                   <select
                                     className="form-select form-select-sm"
-                                    value={item.chargeMethod}
+                                    aria-label="Charge method" value={item.chargeMethod}
                                     onChange={(e) => handleUpdateItem(idx, { chargeMethod: e.target.value as ChargeMethod })}
                                   >
                                     <option value="PER_UNIT">Per Unit</option>
@@ -420,10 +427,10 @@ export const NewOrder: React.FC = () => {
                                   <div className="input-group input-group-sm">
                                     <input
                                       type="number"
-                                      min="0.01"
+                                      min={isPerKg ? '0.01' : '1'}
                                       step={isPerKg ? '0.01' : '1'}
                                       className="form-control form-control-sm"
-                                      value={item.quantity}
+                                      aria-label="Quantity or weight" value={item.quantity}
                                       onChange={(e) => handleUpdateItem(idx, { quantity: parseFloat(e.target.value) || 0 })}
                                       required
                                     />
@@ -438,7 +445,7 @@ export const NewOrder: React.FC = () => {
                                       min="0"
                                       step="0.01"
                                       className={`form-control form-control-sm ${item.isOverridden ? 'border-warning bg-warning-subtle fw-semibold' : ''}`}
-                                      value={item.carryCharge}
+                                      aria-label="Carry rate" value={item.carryCharge}
                                       onChange={(e) =>
                                         handleUpdateItem(idx, {
                                           carryCharge: parseFloat(e.target.value) || 0,
@@ -522,6 +529,7 @@ export const NewOrder: React.FC = () => {
                       min="0"
                       step="0.01"
                       className="form-control"
+                      aria-label="Discount"
                       value={discount}
                       onChange={(e) => setDiscount(parseFloat(e.target.value) || 0)}
                     />
@@ -543,6 +551,7 @@ export const NewOrder: React.FC = () => {
                       min="0"
                       step="0.01"
                       className="form-control"
+                      aria-label="Additional handling charges"
                       value={additionalCharges}
                       onChange={(e) => setAdditionalCharges(parseFloat(e.target.value) || 0)}
                     />
@@ -565,7 +574,7 @@ export const NewOrder: React.FC = () => {
                 <button
                   type="submit"
                   className="btn btn-success btn-lg w-100 fw-bold shadow-sm"
-                  disabled={isSubmitting || items.length === 0}
+                  disabled={isSubmitting || items.length === 0 || !!calculationError}
                 >
                   {isSubmitting ? (
                     <>
@@ -587,7 +596,7 @@ export const NewOrder: React.FC = () => {
 
       {/* Quick Add Product Modal */}
       {showQuickAddProduct && (
-        <div className="modal show d-block" tabIndex={-1} style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
+        <ModalFrame onClose={() => setShowQuickAddProduct(false)}>
           <div className="modal-dialog modal-dialog-centered">
             <div className="modal-content border-0 shadow">
               <div className="modal-header bg-primary text-white">
@@ -596,7 +605,7 @@ export const NewOrder: React.FC = () => {
                 </h5>
                 <button
                   type="button"
-                  className="btn-close btn-close-white"
+                  className="btn-close btn-close-white" aria-label="Close"
                   onClick={() => setShowQuickAddProduct(false)}
                 ></button>
               </div>
@@ -674,7 +683,7 @@ export const NewOrder: React.FC = () => {
               </form>
             </div>
           </div>
-        </div>
+        </ModalFrame>
       )}
     </div>
   );

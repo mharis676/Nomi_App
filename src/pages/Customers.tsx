@@ -1,3 +1,4 @@
+import { ModalFrame } from '../components/ModalFrame';
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { storage } from '../services/storage';
@@ -71,7 +72,7 @@ export const Customers: React.FC = () => {
     }
   };
 
-  const handleSaveCustomer = (e: React.FormEvent) => {
+  const handleSaveCustomer = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!canEdit) {
       setError('You lack permission to modify customer records.');
@@ -83,7 +84,7 @@ export const Customers: React.FC = () => {
     }
 
     try {
-      storage.saveCustomer({
+      await storage.saveCustomer({
         id: editingCustomer ? editingCustomer.id : undefined,
         customerCode: editingCustomer ? editingCustomer.customerCode : '',
         fullName: fullName.trim(),
@@ -101,10 +102,10 @@ export const Customers: React.FC = () => {
     }
   };
 
-  const handleArchive = (id: string, name: string) => {
+  const handleArchive = async (id: string, name: string) => {
     if (window.confirm(`Are you sure you want to deactivate/archive "${name}"? Historical financial records will be fully preserved.`)) {
-      storage.archiveCustomer(id);
-      loadCustomers();
+      try { await storage.archiveCustomer(id); loadCustomers(); }
+      catch (cause) { setError(cause instanceof Error ? cause.message : 'Could not archive record.'); }
     }
   };
 
@@ -133,6 +134,7 @@ export const Customers: React.FC = () => {
         )}
       </div>
 
+      {error && !showModal && <div role="alert" className="alert alert-danger">{error}</div>}
       {/* Search Bar */}
       <div className="card border-0 shadow-sm mb-4">
         <div className="card-body p-3">
@@ -154,7 +156,7 @@ export const Customers: React.FC = () => {
       {/* Customers Table */}
       <div className="card border-0 shadow-sm">
         <div className="card-body p-0">
-          <div className="table-responsive">
+          <div className="table-responsive" tabIndex={0} role="region" aria-label="Scrollable records">
             <table className="table table-hover align-middle mb-0">
               <thead className="table-light">
                 <tr>
@@ -235,14 +237,14 @@ export const Customers: React.FC = () => {
 
       {/* Customer Modal */}
       {showModal && (
-        <div className="modal show d-block" tabIndex={-1} style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
+        <ModalFrame onClose={() => setShowModal(false)}>
           <div className="modal-dialog modal-dialog-centered modal-dialog-scrollable">
             <div className="modal-content border-0 shadow">
               <div className="modal-header bg-primary text-white">
                 <h5 className="modal-title fw-bold">
                   {editingCustomer ? `Edit Customer (${editingCustomer.customerCode})` : 'Create New Customer'}
                 </h5>
-                <button type="button" className="btn-close btn-close-white" onClick={() => setShowModal(false)}></button>
+                <button type="button" className="btn-close btn-close-white" aria-label="Close" onClick={() => setShowModal(false)}></button>
               </div>
               <form onSubmit={handleSaveCustomer}>
                 <div className="modal-body">
@@ -255,8 +257,8 @@ export const Customers: React.FC = () => {
                   )}
 
                   <div className="mb-3">
-                    <label className="form-label fw-semibold">Customer Full Name *</label>
-                    <input
+                    <label htmlFor="customers-field-1" className="form-label fw-semibold">Customer Full Name *</label>
+                    <input id="customers-field-1"
                       type="text"
                       className="form-control"
                       value={fullName}
@@ -267,8 +269,8 @@ export const Customers: React.FC = () => {
                   </div>
 
                   <div className="mb-3">
-                    <label className="form-label fw-semibold">Phone Number</label>
-                    <input
+                    <label htmlFor="customers-field-2" className="form-label fw-semibold">Phone Number</label>
+                    <input id="customers-field-2"
                       type="text"
                       className="form-control"
                       value={phone}
@@ -278,8 +280,8 @@ export const Customers: React.FC = () => {
                   </div>
 
                   <div className="mb-3">
-                    <label className="form-label fw-semibold">Shop / Residential Address</label>
-                    <input
+                    <label htmlFor="customers-field-3" className="form-label fw-semibold">Shop / Residential Address</label>
+                    <input id="customers-field-3"
                       type="text"
                       className="form-control"
                       value={address}
@@ -290,8 +292,8 @@ export const Customers: React.FC = () => {
 
                   {!editingCustomer && (
                     <div className="mb-3">
-                      <label className="form-label fw-semibold">Opening Balance ({settings.currency})</label>
-                      <input
+                      <label htmlFor="customers-field-4" className="form-label fw-semibold">Opening Balance ({settings.currency})</label>
+                      <input id="customers-field-4"
                         type="number"
                         min="0"
                         step="0.01"
@@ -307,8 +309,8 @@ export const Customers: React.FC = () => {
                   )}
 
                   <div className="mb-3">
-                    <label className="form-label fw-semibold">Notes / Merchant Category</label>
-                    <textarea
+                    <label htmlFor="customers-field-5" className="form-label fw-semibold">Notes / Merchant Category</label>
+                    <textarea id="customers-field-5"
                       className="form-control"
                       rows={2}
                       value={notes}
@@ -328,7 +330,7 @@ export const Customers: React.FC = () => {
               </form>
             </div>
           </div>
-        </div>
+        </ModalFrame>
       )}
     </div>
   );

@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { storage } from '../src/services/storage';
+import { StorageService } from '../src/services/ledger';
+const storage = new StorageService();
 
 describe('Customer Ledger & Financial Reconciliation Suite', () => {
   beforeEach(() => {
@@ -715,4 +716,36 @@ describe('Customer Ledger & Financial Reconciliation Suite', () => {
     expect(statement.credits).toBe(1500);
     expect(statement.closingBalance).toBe(2750);
   });
+});
+
+it('rejects payments against missing, other customer, or cancelled invoices before writing', () => {
+  storage.init(true);
+  const [customer, other] = storage.getCustomers();
+  const product = storage.getProducts()[0];
+  const { invoice } = storage.confirmOrder({ customerId: customer.id, items: [{ id: 'item', productId: product.id, productNameSnapshot: product.name, quantity: 1, chargeMethod: 'PER_UNIT', carryCharge: 100, lineTotal: 100 }] });
+  const pay = (customerId: string, invoiceId: string) => storage.recordPayment({ customerId, invoiceId, amount: 10, paymentMethod: 'CASH' });
+  const count = storage.getPayments().length;
+  expect(() => pay(customer.id, 'missing')).toThrow(/not found/);
+  expect(() => pay(other.id, invoice.id)).toThrow(/does not belong/);
+  storage.cancelInvoice(invoice.id, 'Cancelled');
+  expect(() => pay(customer.id, invoice.id)).toThrow(/cancelled/);
+  expect(storage.getPayments()).toHaveLength(count);
+  expect(() => storage.reviseInvoice(invoice.id, [], 0, 0, 'change')).toThrow(/Cancelled/);
+});
+
+it('rejects reuse of a payment key with different details', () => {
+  storage.init(true);
+  const customer = storage.getCustomers()[0];
+  storage.recordPayment({ customerId: customer.id, amount: 10, paymentMethod: 'CASH', idempotencyKey: 'same-key' });
+  expect(() => storage.recordPayment({ customerId: customer.id, amount: 20, paymentMethod: 'CASH', idempotencyKey: 'same-key' })).toThrow(/different payment/);
+});
+
+
+it('preserves opening customer credit and prevents refunds beyond it', () => {
+  storage.init(true);
+  const customer = storage.saveCustomer({ customerCode: 'CREDIT-OPEN', fullName: 'Credit customer', openingBalance: -100, isActive: true });
+  expect(storage.getCustomerStatement(customer.id).closingBalance).toBe(-100);
+  expect(() => storage.recordRefund({ customerId: customer.id, amount: 101, paymentMethod: 'CASH', reason: 'Unused credit' })).toThrow(/exceeds/);
+  storage.recordRefund({ customerId: customer.id, amount: 100, paymentMethod: 'CASH', reason: 'Unused credit' });
+  expect(storage.getCustomerStatement(customer.id).closingBalance).toBe(0);
 });

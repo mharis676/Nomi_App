@@ -9,27 +9,58 @@
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
-    "typecheck": "tsc --noEmit",
-    "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0"
+    "typecheck": "tsc --noEmit && tsc -p tsconfig.server.json",
+    "lint": "eslint src server scripts test e2e e2e-server e2e-local",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
+    "check": "npm run lint && npm run typecheck && npm test && npm run build",
+    "server:dev": "tsx watch server/index.ts",
+    "start": "vite preview --host 127.0.0.1",
+    "db:migrate": "tsx scripts/migrate.ts",
+    "db:backup": "tsx scripts/backup.ts",
+    "db:restore": "tsx scripts/restore.ts",
+    "test:integration": "vitest run --config vitest.integration.config.ts",
+    "test:e2e:server": "playwright test --config playwright.server.config.ts",
+    "test:e2e:local": "playwright test --config playwright.local.config.ts",
+    "start:server": "tsx server/index.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.49.1",
     "bootstrap": "^5.3.3",
     "bootstrap-icons": "^1.11.3",
     "decimal.js": "^10.5.0",
-    "jspdf": "^2.5.2",
-    "jspdf-autotable": "^3.8.4",
+    "dotenv": "^18.0.9",
+    "express": "^5.3.0",
+    "express-rate-limit": "^8.7.2",
+    "helmet": "^8.3.0",
+    "jspdf": "^4.2.1",
+    "jspdf-autotable": "^5.0.9",
+    "pg": "^8.23.1",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "react-router-dom": "^6.28.2"
+    "react-router-dom": "^7.18.5",
+    "zod": "^4.6.7",
+    "tsx": "^4.23.15"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.14.0",
+    "@eslint/js": "^10.0.1",
+    "@playwright/test": "^1.64.1",
+    "@types/express": "^5.0.6",
+    "@types/node": "^26.6.6",
+    "@types/pg": "^8.23.1",
     "@types/react": "^18.3.18",
     "@types/react-dom": "^18.3.5",
     "@vitejs/plugin-react": "^4.3.4",
+    "eslint": "^10.14.0",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "eslint-plugin-react-refresh": "^0.5.7",
     "typescript": "^5.7.3",
+    "typescript-eslint": "^8.72.1",
     "vite": "^6.2.0",
-    "vitest": "^3.0.7"
+    "vitest": "^5.0.5"
+  },
+  "engines": {
+    "node": ">=22.16.0"
   }
 }
-

@@ -1,64 +1,21 @@
-# BACKUP AND DISASTER RECOVERY PROCEDURES
+# Backup and restore
 
-## Saudi Carry Charges & Customer Account Management System
+Use provider-managed PostgreSQL backups/PITR for the complete database, including profiles and request history. Verify the provider's separate policy for restoring Auth users and configuration; workspace JSON exports do not contain those accounts. Schedule encrypted backups and establish the business's acceptable recovery point and recovery time before launch.
 
-### 1. Database Backup Strategy
+The application also includes a consistent workspace export:
 
-Since the application uses PostgreSQL (via Supabase or standard PostgreSQL instances), backups must ensure transactional consistency across all financial and ledger tables.
-
-#### 1.1 Automated Backups
-- Supabase automatically provides Point-In-Time Recovery (PITR) and daily automated snapshots for Pro tier.
-- For self-hosted or dedicated PostgreSQL instances, enable WAL archiving and configure `pg_dump` daily cron jobs.
-
-#### 1.2 Manual Logical Backup (pg_dump)
-To take a complete logical backup of all schema and financial data:
-```bash
-# Dump all tables, schema, functions, and RLS policies
-pg_dump --host=<DB_HOST> \
-        --port=5432 \
-        --username=postgres \
-        --dbname=postgres \
-        --format=custom \
-        --file=backup_$(date +%Y%m%d_%H%M%S).dump
+```sh
+npm run db:backup -- /protected/location/workspace.backup.json
 ```
 
----
+Use administrator `DATABASE_URL`. The command uses a repeatable-read transaction and exports the workspace, migration checksums and request retry history together. It refuses to overwrite a file. Store the result encrypted with restricted access; it contains customer and financial data. Exports are not full database or Auth backups.
 
-### 2. Restoration Runbook
+To restore an export to a database with matching migrations and the referenced profiles already present, stop all application writers, take a fresh pre-restore backup, and run:
 
-#### 2.1 Restoration to Staging / Recovery Environment
-1. Provision a clean target PostgreSQL instance.
-2. Ensure database user credentials and extensions (`uuid-ossp`, `pgcrypto`) are configured.
-3. Execute restore using `pg_restore`:
-```bash
-pg_restore --host=<RECOVERY_HOST> \
-           --port=5432 \
-           --username=postgres \
-           --dbname=postgres \
-           --clean \
-           --if-exists \
-           backup_20261031_000000.dump
-```
-4. Verify Row Level Security policies:
-```sql
-SELECT tablename, rowsecurity FROM pg_tables WHERE schemaname = 'public';
-```
-5. Run the ledger verification query to ensure financial integrity:
-```sql
--- Check that customer ledger matches transaction sum
-SELECT 
-  c.id, 
-  c.full_name,
-  c.opening_balance + COALESCE(SUM(t.debit), 0) - COALESCE(SUM(t.credit), 0) AS calculated_balance
-FROM customers c
-LEFT JOIN customer_transactions t ON t.customer_id = c.id
-GROUP BY c.id, c.full_name, c.opening_balance;
+```sh
+npm run db:restore -- /protected/location/workspace.backup.json --confirm-replace
 ```
 
----
+Restore validates migration checksums and replaces workspace data plus retry history in one transaction. Failure rolls the transaction back. It increases the current revision so old clients cannot overwrite the restored workspace. Restart the server, require staff to reload/sign in, and reconcile financial balances with external payment records before resuming operations. Payments made after the backup will need explicit reconciliation; restoring cannot recover records absent from the backup.
 
-### 3. Data Retention and Archival Policy
-- Customers and Products must **never be hard-deleted** if they have associated orders, invoices, or ledger transactions. They are marked `is_active = false`.
-- Historical invoice revisions are retained permanently for auditing.
-- Financial audit logs are append-only.
-
+Local PostgreSQL integration tests verify that backup/restore retains the saved workspace and request retry results. This does not validate the hosting provider's PITR or Auth recovery procedure; run that drill in staging.

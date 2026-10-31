@@ -1,3 +1,4 @@
+import { ModalFrame } from '../components/ModalFrame';
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { storage } from '../services/storage';
@@ -49,7 +50,7 @@ export const CustomerDetail: React.FC = () => {
     }
   };
 
-  const handleRecordPayment = (e: React.FormEvent) => {
+  const handleRecordPayment = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!customer) return;
     if (paymentAmount <= 0) {
@@ -59,7 +60,7 @@ export const CustomerDetail: React.FC = () => {
 
     try {
       setPaymentError(null);
-      storage.recordPayment({
+      await storage.recordPayment({
         customerId: customer.id,
         amount: paymentAmount,
         paymentMethod,
@@ -188,8 +189,8 @@ export const CustomerDetail: React.FC = () => {
         <div className="card-body p-3">
           <div className="row g-2 align-items-center">
             <div className="col-12 col-sm-4 col-md-3">
-              <label className="form-label small fw-semibold mb-1">From Date</label>
-              <input
+              <label htmlFor="customerdetail-field-1" className="form-label small fw-semibold mb-1">From Date</label>
+              <input id="customerdetail-field-1"
                 type="date"
                 className="form-control form-control-sm"
                 value={startDate}
@@ -197,8 +198,8 @@ export const CustomerDetail: React.FC = () => {
               />
             </div>
             <div className="col-12 col-sm-4 col-md-3">
-              <label className="form-label small fw-semibold mb-1">To Date</label>
-              <input
+              <label htmlFor="customerdetail-field-2" className="form-label small fw-semibold mb-1">To Date</label>
+              <input id="customerdetail-field-2"
                 type="date"
                 className="form-control form-control-sm"
                 value={endDate}
@@ -233,7 +234,7 @@ export const CustomerDetail: React.FC = () => {
               No transactions recorded in this period.
             </div>
           ) : (
-            <div className="table-responsive">
+            <div className="table-responsive" tabIndex={0} role="region" aria-label="Scrollable records">
               <table className="table table-hover align-middle mb-0">
                 <thead className="table-light">
                   <tr>
@@ -295,12 +296,12 @@ export const CustomerDetail: React.FC = () => {
 
       {/* Record Payment Modal */}
       {showPaymentModal && (
-        <div className="modal show d-block" tabIndex={-1} style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
+        <ModalFrame onClose={() => setShowPaymentModal(false)}>
           <div className="modal-dialog modal-dialog-centered modal-dialog-scrollable">
             <div className="modal-content border-0 shadow">
               <div className="modal-header bg-success text-white">
                 <h5 className="modal-title fw-bold">Record Customer Payment</h5>
-                <button type="button" className="btn-close btn-close-white" onClick={() => setShowPaymentModal(false)}></button>
+                <button type="button" className="btn-close btn-close-white" aria-label="Close" onClick={() => setShowPaymentModal(false)}></button>
               </div>
               <form onSubmit={handleRecordPayment}>
                 <div className="modal-body">
@@ -317,8 +318,8 @@ export const CustomerDetail: React.FC = () => {
                   </div>
 
                   <div className="mb-3">
-                    <label className="form-label fw-semibold">Payment Amount ({settings.currency}) *</label>
-                    <input
+                    <label htmlFor="customerdetail-field-3" className="form-label fw-semibold">Payment Amount ({settings.currency}) *</label>
+                    <input id="customerdetail-field-3"
                       type="number"
                       min="0.01"
                       step="0.01"
@@ -334,8 +335,8 @@ export const CustomerDetail: React.FC = () => {
 
                   <div className="row g-2 mb-3">
                     <div className="col-12 col-sm-6">
-                      <label className="form-label small fw-semibold">Payment Method</label>
-                      <select
+                      <label htmlFor="customerdetail-field-4" className="form-label small fw-semibold">Payment Method</label>
+                      <select id="customerdetail-field-4"
                         className="form-select form-select-sm"
                         value={paymentMethod}
                         onChange={(e) => setPaymentMethod(e.target.value as PaymentMethod)}
@@ -347,8 +348,8 @@ export const CustomerDetail: React.FC = () => {
                       </select>
                     </div>
                     <div className="col-12 col-sm-6">
-                      <label className="form-label small fw-semibold">Payment Date</label>
-                      <input
+                      <label htmlFor="customerdetail-field-5" className="form-label small fw-semibold">Payment Date</label>
+                      <input id="customerdetail-field-5"
                         type="date"
                         className="form-control form-control-sm"
                         value={paymentDate}
@@ -359,8 +360,8 @@ export const CustomerDetail: React.FC = () => {
                   </div>
 
                   <div className="mb-3">
-                    <label className="form-label small fw-semibold">Bank / Receipt Reference #</label>
-                    <input
+                    <label htmlFor="customerdetail-field-6" className="form-label small fw-semibold">Bank / Receipt Reference #</label>
+                    <input id="customerdetail-field-6"
                       type="text"
                       className="form-control form-control-sm"
                       placeholder="e.g. TRX-987654 or Slip 12"
@@ -370,8 +371,8 @@ export const CustomerDetail: React.FC = () => {
                   </div>
 
                   <div className="mb-3">
-                    <label className="form-label small fw-semibold">Payment Notes</label>
-                    <textarea
+                    <label htmlFor="customerdetail-field-7" className="form-label small fw-semibold">Payment Notes</label>
+                    <textarea id="customerdetail-field-7"
                       className="form-control form-control-sm"
                       rows={2}
                       placeholder="Additional notes..."
@@ -391,7 +392,7 @@ export const CustomerDetail: React.FC = () => {
               </form>
             </div>
           </div>
-        </div>
+        </ModalFrame>
       )}
     </div>
   );

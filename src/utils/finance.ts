@@ -22,9 +22,11 @@ export function calculateLineTotal(
   carryCharge: number | string,
   chargeMethod: ChargeMethod
 ): number {
-  const val = new Decimal(quantityOrWeight || 0);
-  const rate = new Decimal(carryCharge || 0);
+  const val = new Decimal(quantityOrWeight === "" ? 0 : quantityOrWeight);
+  const rate = new Decimal(carryCharge === "" ? 0 : carryCharge);
 
+  if (!val.isFinite() || !rate.isFinite()) throw new Error('Quantity and carry charge must be finite numbers.');
+  if (!['PER_UNIT', 'PER_KG', 'PER_ORDER'].includes(chargeMethod)) throw new Error('Invalid charge method.');
   if (val.isNegative() || rate.isNegative()) {
     throw new Error('Quantity/Weight and carry charge cannot be negative.');
   }
@@ -98,9 +100,10 @@ export function calculateOrderTotals(
     return acc.plus(new Decimal(item.lineTotal));
   }, new Decimal(0));
 
-  const disc = new Decimal(discount || 0);
-  const extra = new Decimal(additionalCharges || 0);
+  const disc = new Decimal(discount === "" ? 0 : discount);
+  const extra = new Decimal(additionalCharges === "" ? 0 : additionalCharges);
 
+  if (!disc.isFinite() || !extra.isFinite()) throw new Error('Order adjustments must be finite numbers.');
   if (disc.isNegative()) {
     throw new Error('Discount cannot be negative.');
   }
@@ -112,6 +115,7 @@ export function calculateOrderTotals(
   }
 
   const grandTotal = subtotal.minus(disc).plus(extra);
+  if (grandTotal.greaterThan('999999999999.99') || subtotal.greaterThan('999999999999.99')) throw new Error('Order exceeds the supported monetary limit.');
 
   return {
     subtotal: roundToTwo(subtotal),

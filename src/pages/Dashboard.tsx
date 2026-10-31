@@ -1,5 +1,7 @@
+import { ModalFrame } from '../components/ModalFrame';
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import { isLocal } from '../services/backend';
 import { storage } from '../services/storage';
 import { formatCurrency, getChargeMethodLabel, getChargeUnitSuffix } from '../utils/finance';
 import { Invoice, CustomerTransaction, ChargeMethod } from '../types';
@@ -62,7 +64,7 @@ export const Dashboard: React.FC = () => {
     }
   };
 
-  const handleSaveProduct = (e: React.FormEvent) => {
+  const handleSaveProduct = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!canEdit) {
       setProdError('You do not have permission to add products.');
@@ -79,7 +81,7 @@ export const Dashboard: React.FC = () => {
 
     try {
       setProdError(null);
-      const saved = storage.saveProduct({
+      const saved = await storage.saveProduct({
         name: prodName.trim(),
         sku: prodSku.trim() || undefined,
         category: prodCategory.trim() || undefined,
@@ -102,12 +104,13 @@ export const Dashboard: React.FC = () => {
 
   return (
     <div className="container-fluid py-3 py-md-4 px-2 px-sm-3 px-md-4">
+      <div className="dashboard-heading"><div><h1>Overview</h1><p>Keep track of carry charges, payments, and customer accounts.</p></div></div>
       {/* Success Notification Alert */}
       {successNotification && (
         <div className="alert alert-success alert-dismissible fade show shadow-sm d-flex align-items-center gap-2 mb-3" role="alert">
           <i className="bi bi-check-circle-fill fs-5 text-success"></i>
           <div className="flex-grow-1">{successNotification}</div>
-          <button type="button" className="btn-close" onClick={() => setSuccessNotification(null)}></button>
+          <button type="button" className="btn-close" aria-label="Close" onClick={() => setSuccessNotification(null)}></button>
         </div>
       )}
 
@@ -173,7 +176,7 @@ export const Dashboard: React.FC = () => {
                 {formatCurrency(metrics.totalPaymentsCollected, settings.currency)}
               </div>
               <div className="small text-muted mt-2">
-                <i className="bi bi-cash-coin text-success me-1"></i> Verified payments deposited
+                <i className="bi bi-cash-coin text-success me-1"></i> Payments recorded
               </div>
             </div>
           </div>
@@ -223,9 +226,9 @@ export const Dashboard: React.FC = () => {
             </div>
             <div className="card-body p-0">
               {recentInvoices.length === 0 ? (
-                <div className="text-center py-4 text-muted small">No confirmed invoices yet.</div>
+                <div className="text-center py-4 text-muted small">No invoices yet. Create an order to get started.</div>
               ) : (
-                <div className="table-responsive">
+                <div className="table-responsive" tabIndex={0} role="region" aria-label="Scrollable records">
                   <table className="table table-hover align-middle mb-0">
                     <thead className="table-light">
                       <tr>
@@ -354,11 +357,11 @@ export const Dashboard: React.FC = () => {
       {/* Latest Ledger Activities */}
       <div className="card border-0 shadow-sm">
         <div className="card-header bg-white py-3 d-flex justify-content-between align-items-center">
-          <h5 className="card-title mb-0 fw-bold fs-6 fs-md-5">Live Continuous Account Ledger Feed</h5>
-          <span className="badge bg-light text-dark border">ACID Synchronized</span>
+          <h5 className="card-title mb-0 fw-bold fs-6 fs-md-5">Recent account activity</h5>
+          <span className="badge bg-light text-dark border">{isLocal ? 'This browser' : 'Workspace ledger'}</span>
         </div>
         <div className="card-body p-0">
-          <div className="table-responsive">
+          <div className="table-responsive" tabIndex={0} role="region" aria-label="Scrollable records">
             <table className="table table-sm table-striped align-middle mb-0">
               <thead className="table-light">
                 <tr>
@@ -371,6 +374,7 @@ export const Dashboard: React.FC = () => {
                 </tr>
               </thead>
               <tbody>
+                {recentTransactions.length === 0 && <tr><td colSpan={6} className="text-center text-muted py-4">No account activity yet.</td></tr>}
                 {recentTransactions.map((tx) => (
                   <tr key={tx.id}>
                     <td className="small text-muted">{new Date(tx.transactionDate).toLocaleDateString()}</td>
@@ -409,7 +413,7 @@ export const Dashboard: React.FC = () => {
 
       {/* Add Product Modal Directly from Dashboard */}
       {showProductModal && (
-        <div className="modal show d-block" tabIndex={-1} style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
+        <ModalFrame onClose={() => setShowProductModal(false)}>
           <div className="modal-dialog modal-dialog-centered modal-dialog-scrollable">
             <div className="modal-content border-0 shadow">
               <div className="modal-header bg-primary text-white">
@@ -418,7 +422,7 @@ export const Dashboard: React.FC = () => {
                 </h5>
                 <button
                   type="button"
-                  className="btn-close btn-close-white"
+                  className="btn-close btn-close-white" aria-label="Close"
                   onClick={() => setShowProductModal(false)}
                 ></button>
               </div>
@@ -439,8 +443,8 @@ export const Dashboard: React.FC = () => {
                   )}
 
                   <div className="mb-3">
-                    <label className="form-label fw-semibold">Product Name *</label>
-                    <input
+                    <label htmlFor="dashboard-field-1" className="form-label fw-semibold">Product Name *</label>
+                    <input id="dashboard-field-1"
                       type="text"
                       className="form-control"
                       value={prodName}
@@ -453,8 +457,8 @@ export const Dashboard: React.FC = () => {
 
                   <div className="row g-2 mb-3">
                     <div className="col-12 col-sm-6">
-                      <label className="form-label small fw-semibold">SKU / Code</label>
-                      <input
+                      <label htmlFor="dashboard-field-2" className="form-label small fw-semibold">SKU / Code</label>
+                      <input id="dashboard-field-2"
                         type="text"
                         className="form-control form-control-sm"
                         value={prodSku}
@@ -463,8 +467,8 @@ export const Dashboard: React.FC = () => {
                       />
                     </div>
                     <div className="col-12 col-sm-6">
-                      <label className="form-label small fw-semibold">Category</label>
-                      <input
+                      <label htmlFor="dashboard-field-3" className="form-label small fw-semibold">Category</label>
+                      <input id="dashboard-field-3"
                         type="text"
                         className="form-control form-control-sm"
                         value={prodCategory}
@@ -476,8 +480,8 @@ export const Dashboard: React.FC = () => {
 
                   <div className="row g-2 mb-3">
                     <div className="col-12 col-sm-6">
-                      <label className="form-label small fw-semibold">Charge Method (Unit of Measure) *</label>
-                      <select
+                      <label htmlFor="dashboard-field-4" className="form-label small fw-semibold">Charge Method (Unit of Measure) *</label>
+                      <select id="dashboard-field-4"
                         className="form-select form-select-sm"
                         value={prodChargeMethod}
                         onChange={(e) => setProdChargeMethod(e.target.value as ChargeMethod)}
@@ -489,10 +493,10 @@ export const Dashboard: React.FC = () => {
                       </select>
                     </div>
                     <div className="col-12 col-sm-6">
-                      <label className="form-label small fw-semibold">
+                      <label htmlFor="dashboard-field-5" className="form-label small fw-semibold">
                         Default Carry Rate ({settings.currency} {getChargeUnitSuffix(prodChargeMethod)}) *
                       </label>
-                      <input
+                      <input id="dashboard-field-5"
                         type="number"
                         min="0"
                         step="0.01"
@@ -505,8 +509,8 @@ export const Dashboard: React.FC = () => {
                   </div>
 
                   <div className="mb-2">
-                    <label className="form-label small fw-semibold">Product Description / Freight Handling Notes</label>
-                    <textarea
+                    <label htmlFor="dashboard-field-6" className="form-label small fw-semibold">Product Description / Freight Handling Notes</label>
+                    <textarea id="dashboard-field-6"
                       className="form-control form-control-sm"
                       rows={2}
                       value={prodNotes}
@@ -535,7 +539,7 @@ export const Dashboard: React.FC = () => {
               </form>
             </div>
           </div>
-        </div>
+        </ModalFrame>
       )}
     </div>
   );

@@ -1,3 +1,5 @@
+> The default app uses local storage and opens directly with full local access; no login or Supabase setup is required. Use `npm run dev`, or `npm run build` followed by `npm start`. Records belong to the current browser and website origin. Server authentication and simulated demo-role instructions apply only to explicitly enabled optional modes.
+
 # USER GUIDE & OPERATING PROCEDURES
 
 ## Saudi Carry Charges & Customer Account Management System

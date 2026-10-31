@@ -1,118 +1,40 @@
-import React from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import React, { useState } from 'react';
+import { Link, NavLink } from 'react-router-dom';
+import { isDemo, isLocal } from '../services/backend';
 import { useAuth } from '../context/AuthContext';
 
+const links = [
+  { to: '/', label: 'Overview', icon: 'bi-grid-1x2' },
+  { to: '/invoices', label: 'Invoices', icon: 'bi-receipt' },
+  { to: '/customers', label: 'Customers', icon: 'bi-people' },
+  { to: '/products', label: 'Catalog', icon: 'bi-box-seam' },
+  { to: '/payments', label: 'Payments', icon: 'bi-wallet2' },
+  { to: '/settings', label: 'Settings', icon: 'bi-gear' },
+];
+
 export const Navbar: React.FC = () => {
-  const location = useLocation();
-  const { user, role, login, logout, isAuthenticated } = useAuth();
-
-  const isActive = (path: string) => location.pathname === path;
-
+  const [open, setOpen] = useState(false);
+  const { role, login, user, logout } = useAuth();
   return (
-    <nav className="navbar navbar-expand-lg navbar-dark bg-dark sticky-top shadow-sm py-2">
-      <div className="container-fluid px-3">
-        <Link className="navbar-brand d-flex align-items-center gap-2 fw-bold text-warning" to="/">
-          <i className="bi bi-airplane-engines-fill text-warning fs-4"></i>
-          <span>Saudi Carry Charges</span>
+    <nav className="app-nav sticky-top" aria-label="Main navigation">
+      <div className="app-nav-inner">
+        <Link className="app-brand" to="/" onClick={() => setOpen(false)}>
+          <span className="app-brand-icon"><i className="bi bi-airplane-engines-fill" aria-hidden="true" /></span>
+          <span>Saudi Carry<small>Charge management</small></span>
         </Link>
-
-        <button
-          className="navbar-toggler"
-          type="button"
-          data-bs-toggle="collapse"
-          data-bs-target="#navbarNav"
-          aria-controls="navbarNav"
-          aria-expanded="false"
-          aria-label="Toggle navigation"
-        >
-          <span className="navbar-toggler-icon"></span>
+        <button className="app-menu-toggle" type="button" aria-label="Toggle navigation" aria-expanded={open} aria-controls="main-navigation" onClick={() => setOpen(!open)}>
+          <i className={`bi ${open ? 'bi-x-lg' : 'bi-list'}`} aria-hidden="true" />
         </button>
-
-        <div className="collapse navbar-collapse" id="navbarNav">
-          <ul className="navbar-nav me-auto mb-2 mb-lg-0">
-            <li className="nav-item">
-              <Link className={`nav-link ${isActive('/') ? 'active text-warning fw-semibold' : ''}`} to="/">
-                <i className="bi bi-speedometer2 me-1"></i> Dashboard
-              </Link>
-            </li>
-            <li className="nav-item">
-              <Link className={`nav-link ${isActive('/orders/new') ? 'active text-warning fw-semibold' : ''}`} to="/orders/new">
-                <i className="bi bi-plus-circle-fill me-1 text-success"></i> New Carry Order
-              </Link>
-            </li>
-            <li className="nav-item">
-              <Link className={`nav-link ${isActive('/invoices') ? 'active text-warning fw-semibold' : ''}`} to="/invoices">
-                <i className="bi bi-receipt me-1"></i> Invoices
-              </Link>
-            </li>
-            <li className="nav-item">
-              <Link className={`nav-link ${isActive('/customers') ? 'active text-warning fw-semibold' : ''}`} to="/customers">
-                <i className="bi bi-people-fill me-1"></i> Customers & Ledger
-              </Link>
-            </li>
-            <li className="nav-item">
-              <Link className={`nav-link ${isActive('/products') ? 'active text-warning fw-semibold' : ''}`} to="/products">
-                <i className="bi bi-box-seam-fill me-1"></i> Carry Catalog
-              </Link>
-            </li>
-            <li className="nav-item">
-              <Link className={`nav-link ${isActive('/payments') ? 'active text-warning fw-semibold' : ''}`} to="/payments">
-                <i className="bi bi-cash-stack me-1"></i> Payments
-              </Link>
-            </li>
-            <li className="nav-item">
-              <Link className={`nav-link ${isActive('/settings') ? 'active text-warning fw-semibold' : ''}`} to="/settings">
-                <i className="bi bi-gear-fill me-1"></i> Settings & Audit
-              </Link>
-            </li>
-          </ul>
-
-          <div className="d-flex align-items-center gap-2">
-            {isAuthenticated ? (
-              <div className="dropdown">
-                <button
-                  className="btn btn-outline-light btn-sm dropdown-toggle d-flex align-items-center gap-2"
-                  type="button"
-                  id="userDropdown"
-                  data-bs-toggle="dropdown"
-                  aria-expanded="false"
-                >
-                  <i className="bi bi-person-circle"></i>
-                  <span>{user?.fullName.split(' ')[0]}</span>
-                  <span className={`badge ${role === 'OWNER' ? 'bg-danger' : role === 'STAFF' ? 'bg-primary' : 'bg-secondary'}`}>
-                    {role}
-                  </span>
-                </button>
-                <ul className="dropdown-menu dropdown-menu-end shadow" aria-labelledby="userDropdown">
-                  <li><h6 className="dropdown-header">Switch Simulated Role:</h6></li>
-                  <li>
-                    <button className="dropdown-item" onClick={() => login('OWNER', 'Muhammad Usman (Owner)')}>
-                      <i className="bi bi-shield-lock me-2 text-danger"></i> Owner (Full Control)
-                    </button>
-                  </li>
-                  <li>
-                    <button className="dropdown-item" onClick={() => login('STAFF', 'Hamza Tariq (Staff)')}>
-                      <i className="bi bi-person-badge me-2 text-primary"></i> Staff (Operational)
-                    </button>
-                  </li>
-                  <li>
-                    <button className="dropdown-item" onClick={() => login('VIEWER', 'Auditor View (Read-Only)')}>
-                      <i className="bi bi-eye me-2 text-secondary"></i> Viewer (Read Only)
-                    </button>
-                  </li>
-                  <li><hr className="dropdown-divider" /></li>
-                  <li>
-                    <button className="dropdown-item text-danger" onClick={logout}>
-                      <i className="bi bi-box-arrow-right me-2"></i> Sign Out
-                    </button>
-                  </li>
-                </ul>
-              </div>
-            ) : (
-              <button className="btn btn-warning btn-sm" onClick={() => login('OWNER')}>
-                <i className="bi bi-box-arrow-in-right me-1"></i> Sign In
-              </button>
-            )}
+        <div className={`app-nav-content ${open ? 'is-open' : ''}`} id="main-navigation">
+          <div className="app-nav-links">
+            {links.map(link => <NavLink key={link.to} to={link.to} end={link.to === '/'} onClick={() => setOpen(false)} className={({ isActive }) => `app-nav-link ${isActive ? 'active' : ''}`}><i className={`bi ${link.icon}`} aria-hidden="true" />{link.label}</NavLink>)}
+          </div>
+          <div className="app-nav-actions">
+            {isDemo ? <><label className="demo-role-label" htmlFor="demo-role">Demo role</label>
+            <select id="demo-role" className="demo-role" value={role} onChange={e => login(e.target.value as 'OWNER' | 'STAFF' | 'VIEWER')} aria-label="Simulated role">
+              <option value="OWNER">Owner</option><option value="STAFF">Staff</option><option value="VIEWER">Viewer</option>
+            </select></> : isLocal ? <span className="small text-muted">Local storage</span> : <><span className="small">{user?.fullName} · {role}</span><button className="btn btn-outline-secondary btn-sm" onClick={() => void logout()}>Sign out</button></>}
+            <Link className="btn btn-primary app-new-order" to="/orders/new" onClick={() => setOpen(false)}><i className="bi bi-plus-lg" aria-hidden="true" /> New order</Link>
           </div>
         </div>
       </div>
