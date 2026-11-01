@@ -6,7 +6,7 @@ Install Chromium with `npx playwright install chromium`. Run `npm run test:e2e:l
 
 For optional server-mode checks, use an isolated PostgreSQL database. Run `psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f test/integration/bootstrap.sql` only against that test database, then `npm run db:migrate` and apply `server/runtime-role.sql`. Set `TEST_DATABASE_URL` and run `npm run test:integration` and `npm run test:e2e:server`. These tests replace test data and must never target production. The server browser tests use a local test identity service with the real API/database and restricted runtime role.
 
-GitHub Actions runs only the APK build, with one job, for main/master pushes or manual dispatch. Commit the workflow, Android project, Capacitor configuration, source and package changes together. Choose Actions > Build Android APK > Run workflow for manual execution. Download the Nomi-Carry-APK artifact after success. See APK.md.
+GitHub Actions runs only the APK build, with one job, for main pushes or manual dispatch on main. Commit the workflow, Android project, Capacitor configuration, source and package changes together. Choose Actions > Build Android APK > Run workflow for manual execution. Download app-debug.apk directly from Releases > Latest Android APK Build after success. No Actions artifact upload or scheduled Dependabot configuration remains. See APK.md.
 
 Quality and database checks remain available as local npm commands; they no longer create separate automatic jobs. Remove obsolete quality/database required checks from branch protection if they were previously configured. Real Supabase requirements apply only to explicitly enabled server mode.
 

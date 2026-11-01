@@ -1,8 +1,8 @@
 # Android APK
 
-One workflow with one job, **Build Android APK**, runs for pushes to main/master or manual dispatch. Historical workflow runs remain visible in GitHub.
+One workflow with one job, **Build Android APK**, runs for pushes to main or manual dispatch on main. A shared concurrency group cancels superseded builds, so builds cannot run in parallel. Historical workflow runs remain visible in GitHub. The scheduled Dependabot configuration has been removed; existing update PRs and repository-level security automation are separate from this APK workflow.
 
-Commit and push the Android project, Capacitor configuration, package and lock files, source changes and workflow together. After a successful run, download **Nomi-Carry-APK** from its Artifacts section. Extract the ZIP to obtain `app-debug.apk`.
+Commit and push the Android project, Capacitor configuration, package and lock files, source changes and workflow together. After a successful run, open **Releases > Latest Android APK Build** and download `app-debug.apk` directly. The workflow uploads one APK release asset and replaces that same filename on the next successful build. It does not upload Actions artifacts, ZIP bundles, or browser/database test reports, so it does not consume the Actions artifact-storage quota. GitHub may also display its automatically generated source archives on the release page.
 
 The APK bundles the frontend and uses local storage without login or Supabase. It does not need a development server. Android records are separate from the desktop browser's records. PDF and CSV exports use the Android sharing dialog.
 

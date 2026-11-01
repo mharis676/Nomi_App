@@ -1,16 +1,18 @@
 name: Build Android APK
+run-name: APK build ${{ github.run_number }} (${{ github.event_name }})
 "on":
   push:
-    branches: [main, master]
+    branches: [main]
   workflow_dispatch:
 permissions:
   contents: write
 concurrency:
-  group: android-apk-${{ github.ref }}
+  group: nomi-android-apk
   cancel-in-progress: true
 jobs:
   apk:
     name: Build APK
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 25
     env:
@@ -39,21 +41,16 @@ jobs:
         run: |
           chmod +x gradlew
           ./gradlew assembleDebug --no-daemon
-      - name: Upload APK Artifact
-        uses: actions/upload-artifact@v4
-        continue-on-error: true
-        with:
-          name: Nomi-Carry-APK
-          path: android/app/build/outputs/apk/debug/app-debug.apk
-          if-no-files-found: error
-          retention-days: 1
-      - name: Release APK
+      - name: Verify APK exists
+        run: test -s android/app/build/outputs/apk/debug/app-debug.apk
+      - name: Publish APK download
         uses: softprops/action-gh-release@v2
-        if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
         with:
           tag_name: latest-apk
           name: "Latest Android APK Build"
-          body: "Automated Android APK build for Saudi Carry Charges System."
+          body: "Local-storage Android APK. Build ${{ github.run_number }}, commit ${{ github.sha }}."
           files: android/app/build/outputs/apk/debug/app-debug.apk
+          overwrite_files: true
+          fail_on_unmatched_files: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
